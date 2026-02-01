@@ -1,0 +1,15 @@
+{
+  "lock": false,
+  "tasks": {
+    "build:hub": "cd hub && deno run -A ./build.ts",
+    "build:12tet": "cd 12tet && deno run -A ./_build.ts"
+  },
+  "imports": {
+    "@char/aftercare": "jsr:@char/aftercare@^0.6.0"
+  },
+  "compilerOptions": {
+    "lib": ["deno.window", "dom"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "@char/aftercare"
+  }
+}
