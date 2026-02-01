@@ -10,15 +10,9 @@ const calculateFrequency = (
   if (match == null) return undefined;
 
   const [_value, note, sharp, flat, octave, cents] = match;
-  const dists: { [key: string]: number | undefined } = {
-    C: -9,
-    D: -7,
-    E: -5,
-    F: -4,
-    G: -2,
-    A: 0,
-    B: 2,
-  };
+  // prettier-ignore
+  const dists: { [key: string]: number | undefined } =
+    { C: -9, D: -7, E: -5, F: -4, G: -2, A: 0, B: 2 };
   let distanceFromA = dists[note.toUpperCase()];
   if (distanceFromA == null) return undefined;
   if (sharp) distanceFromA += 1;
