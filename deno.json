@@ -5,7 +5,7 @@
     "build:12tet": "cd 12tet && deno run -A ./_build.ts"
   },
   "imports": {
-    "@char/aftercare": "jsr:@char/aftercare@^0.6.0"
+    "@char/aftercare": "jsr:@char/aftercare@^0.6.1"
   },
   "compilerOptions": {
     "lib": ["deno.window", "dom"],
