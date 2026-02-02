@@ -56,6 +56,9 @@ note.subscribe((v) => {
 
 freq.subscribe((v) => note.set(calculateNote(a4.get(), v)));
 
+// invalidate frequency when base frequency changes
+a4.subscribe(() => note.notify());
+
 const freqStr = freq.derive((f) => f.toFixed(3), Number);
 const period = freq.derive((f) => (1000 / f).toFixed(4));
 
