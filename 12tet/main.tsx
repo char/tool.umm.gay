@@ -23,7 +23,7 @@ const calculateFrequency = (
   return root * Math.pow(2, octaveDistance + distanceFromA / 12);
 };
 
-const calculateNote = (root: number, frequency: number): string => {
+const calculateNote = (root: number, frequency: number): string | undefined => {
   const distanceFromA = 12 * Math.log2(frequency / root);
   const semis = Math.round(distanceFromA);
   const cents = Math.round((distanceFromA - semis) * 100);
@@ -33,6 +33,7 @@ const calculateNote = (root: number, frequency: number): string => {
   // prettier-ignore
   const notes = ["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"];
   const note = notes[octaveBoundSemis];
+  if (note == undefined) return undefined;
 
   let centsStr = "";
   if (cents <= -1) {
@@ -54,7 +55,10 @@ note.subscribe((v) => {
   if (f !== undefined) freq.set(f);
 });
 
-freq.subscribe((v) => note.set(calculateNote(a4.get(), v)));
+freq.subscribe((v) => {
+  const n = calculateNote(a4.get(), v);
+  if (n) note.set(n);
+});
 
 // invalidate frequency when base frequency changes
 a4.subscribe(() => note.notify(true));
