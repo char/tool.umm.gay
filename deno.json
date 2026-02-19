@@ -2,10 +2,14 @@
   "lock": false,
   "tasks": {
     "build:hub": "cd hub && deno run -A ./build.ts",
-    "build:12tet": "cd 12tet && deno run -A ./_build.ts"
+    "build:12tet": "cd 12tet && deno run -A ./_build.ts",
+    "build:irclogs": "cd irclogs && deno run -A ./_build.ts",
+    "build": {
+      "dependencies": ["build:hub", "build:12tet", "build:irclogs"]
+    }
   },
   "imports": {
-    "@char/aftercare": "jsr:@char/aftercare@^0.6.1"
+    "@char/aftercare": "jsr:@char/aftercare@^0.6.7"
   },
   "compilerOptions": {
     "lib": ["deno.window", "dom"],
