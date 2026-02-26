@@ -21,13 +21,13 @@ const canvasToBlob = (
   mime: string,
   q?: number,
 ): Promise<Blob> => {
-  const { promise, resolve, reject } = Promise.withResolvers<Blob>();
-  canvas.toBlob(
-    (blob) => (blob ? resolve(blob) : reject(new Error("conversion failed"))),
-    mime,
-    q,
-  );
-  return promise;
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("conversion failed"))),
+      mime,
+      q,
+    );
+  });
 };
 
 const convertFile = async (file: File): Promise<ConvertedImage> => {
