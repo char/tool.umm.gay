@@ -25,13 +25,13 @@ const semitones = new Signal(0);
 const renderChordLine = (line: string): Node[] => {
   const tokens = line.split(/(\s+)/);
   const st = semitones.get();
-  return tokens.map((tok) =>
+  return tokens.map(tok =>
     isChord(tok) ? (
       <span class="chord-wrap">
         <span class="chord">
           {tok
             .split("/")
-            .map((r) => transposeChord(r, st))
+            .map(r => transposeChord(r, st))
             .join("/")}
         </span>
         {tok}

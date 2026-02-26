@@ -1,4 +1,4 @@
 {
   "printWidth": 96,
-  "arrowParen": "avoid"
+  "arrowParens": "avoid"
 }

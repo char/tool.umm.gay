@@ -46,7 +46,7 @@ function parseLine(line: string): Line | undefined {
 function parseLog(raw: string): Line[] {
   return raw
     .split("\n")
-    .map((l) => parseLine(l))
+    .map(l => parseLine(l))
     .filter((l): l is Line => l !== undefined);
 }
 
@@ -87,7 +87,7 @@ function renderLines(parsed: Line[]) {
 
 const logContainer = <div />;
 
-lines.subscribe((parsed) => {
+lines.subscribe(parsed => {
   logContainer.replaceChildren(renderLines(parsed));
 });
 

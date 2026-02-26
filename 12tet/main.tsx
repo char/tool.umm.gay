@@ -1,12 +1,7 @@
 import { Signal } from "@char/aftercare";
 
-const calculateFrequency = (
-  root: number,
-  noteDescriptor: string,
-): number | undefined => {
-  const match = noteDescriptor.match(
-    /([a-gA-G])\s*(#?)(b?)\s*(-?\d+)([+-]\d+)?/,
-  );
+const calculateFrequency = (root: number, noteDescriptor: string): number | undefined => {
+  const match = noteDescriptor.match(/([a-gA-G])\s*(#?)(b?)\s*(-?\d+)([+-]\d+)?/);
   if (match == null) return undefined;
 
   const [_value, note, sharp, flat, octave, cents] = match;
@@ -50,12 +45,12 @@ const a4 = new Signal(440);
 const note = new Signal("C5");
 const freq = new Signal(523.251);
 
-note.subscribe((v) => {
+note.subscribe(v => {
   const f = calculateFrequency(a4.get(), v);
   if (f !== undefined) freq.set(f);
 });
 
-freq.subscribe((v) => {
+freq.subscribe(v => {
   const n = calculateNote(a4.get(), v);
   if (n) note.set(n);
 });
@@ -63,14 +58,13 @@ freq.subscribe((v) => {
 // invalidate frequency when base frequency changes
 a4.subscribe(() => note.notify(true));
 
-const freqStr = freq.derive((f) => f.toFixed(3), Number);
-const period = freq.derive((f) => (1000 / f).toFixed(4));
+const freqStr = freq.derive(f => f.toFixed(3), Number);
+const period = freq.derive(f => (1000 / f).toFixed(4));
 
 document.querySelector("main")!.append(
   <section>
     if A4 is
-    <input id="a4" type="text" value={a4.str(Number)} placeholder="440" /> Hz,
-    then
+    <input id="a4" type="text" value={a4.str(Number)} placeholder="440" /> Hz, then
   </section>,
   <section>
     <input id="note" type="text" value={note} placeholder="C5" /> is{" "}
