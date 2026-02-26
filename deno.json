@@ -4,8 +4,9 @@
     "build:hub": "cd hub && deno run -A ./build.ts",
     "build:12tet": "cd 12tet && deno run -A ./_build.ts",
     "build:irclogs": "cd irclogs && deno run -A ./_build.ts",
+    "build:img": "cd img && deno run -A ./_build.ts",
     "build": {
-      "dependencies": ["build:hub", "build:12tet", "build:irclogs"]
+      "dependencies": ["build:hub", "build:12tet", "build:irclogs", "build:img"]
     }
   },
   "imports": {
