@@ -78,7 +78,7 @@ const formatSelect = (
 
 const form = (
   <form
-    onsubmit={(e: Event) => {
+    _onsubmit={(e) => {
       e.preventDefault();
       convertFiles(fileInput.files!);
     }}
@@ -94,10 +94,7 @@ const qualityPct = quality.derive(
 );
 
 const qualitySlider = (
-  <label
-    class="quality-label"
-    style={{ display: format.derive((f) => (f === "png" ? "none" : "")) }}
-  >
+  <label style={{ display: format.derive((f) => (f === "png" ? "none" : "")) }}>
     quality:{" "}
     <input type="range" min="1" max="100" value={qualityPct.str(Number)} />
     <span class="quality-value">{qualityPct.str()}%</span>
@@ -105,8 +102,8 @@ const qualitySlider = (
 ) as HTMLElement;
 
 const controls = (
-  <section class="controls">
-    <label class="format-label">format: {formatSelect}</label>
+  <section id="controls">
+    <label>format: {formatSelect}</label>
     {qualitySlider}
     {form}
     <p class="hint">or paste / drop images anywhere on the page</p>
@@ -122,7 +119,7 @@ const renderResult = (img: ConvertedImage) => (
   </div>
 );
 
-const resultsSection = (<section class="results" />) as HTMLElement;
+const resultsSection = (<section id="results" />) as HTMLElement;
 
 images.subscribe((imgs) => {
   resultsSection.replaceChildren(...imgs.map(renderResult));
