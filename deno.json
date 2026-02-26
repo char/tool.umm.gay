@@ -9,7 +9,7 @@
     }
   },
   "imports": {
-    "@char/aftercare": "jsr:@char/aftercare@^0.6.7"
+    "@char/aftercare": "jsr:@char/aftercare@^0.6.8"
   },
   "compilerOptions": {
     "lib": ["deno.window", "dom"],
