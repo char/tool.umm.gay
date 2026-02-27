@@ -6,8 +6,16 @@
     "build:irclogs": "cd irclogs && deno run -A ./_build.ts",
     "build:img": "cd img && deno run -A ./_build.ts",
     "build:chords": "cd chords && deno run -A ./_build.ts",
+    "build:facemodels": "cd facemodels && deno run -A ./_build.ts",
     "build": {
-      "dependencies": ["build:hub", "build:12tet", "build:irclogs", "build:img", "build:chords"]
+      "dependencies": [
+        "build:hub",
+        "build:12tet",
+        "build:irclogs",
+        "build:img",
+        "build:chords",
+        "build:facemodels"
+      ]
     }
   },
   "imports": {

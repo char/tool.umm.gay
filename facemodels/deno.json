@@ -1,0 +1,12 @@
+{
+  "lock": false,
+  "imports": {
+    "@char/aftercare": "jsr:@char/aftercare@^0.6.8",
+    "@vladmandic/face-api": "npm:@vladmandic/face-api@^1.7.15"
+  },
+  "compilerOptions": {
+    "lib": ["deno.window", "dom"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "@char/aftercare"
+  }
+}
