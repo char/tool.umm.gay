@@ -11,8 +11,51 @@ const modelsLoaded = new Signal(false);
 const loading = new Signal(false);
 const imageUrl = new Signal<string | null>(null);
 const detections = new Signal<FaceResult[]>([]);
+
 const threshold = new Signal(0.3);
 const showLandmarks = new Signal(true);
+const perturbStrength = new Signal(0);
+
+let loadedImg: HTMLImageElement | null = null;
+
+const applyPerturbation = (img: HTMLImageElement, strength: number): string => {
+  const c = document.createElement("canvas");
+  c.width = img.naturalWidth;
+  c.height = img.naturalHeight;
+  const ctx = c.getContext("2d")!;
+  ctx.drawImage(img, 0, 0);
+  if (strength > 0) {
+    const imageData = ctx.getImageData(0, 0, c.width, c.height);
+    const { data } = imageData;
+    for (let i = 0; i < data.length; i += 4) {
+      const noise = (Math.random() * 2 - 1) * strength;
+      data[i] = Math.max(0, Math.min(255, data[i] + noise));
+      data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + noise));
+      data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + noise));
+    }
+    ctx.putImageData(imageData, 0, 0);
+  }
+  return c.toDataURL();
+};
+
+const runDetection = async (img: HTMLImageElement) => {
+  loading.set(true);
+  const dataUrl = applyPerturbation(img, perturbStrength.get());
+  imgEl.src = dataUrl;
+  try {
+    const input = await loadImage(dataUrl);
+    const results = await faceapi
+      .detectAllFaces(
+        input,
+        new faceapi.TinyFaceDetectorOptions({ inputSize: 800, scoreThreshold: 0.05 }),
+      )
+      .withFaceLandmarks()
+      .withAgeAndGender();
+    detections.set(results);
+  } finally {
+    loading.set(false);
+  }
+};
 
 (async () => {
   await Promise.all([
@@ -44,17 +87,9 @@ const processFile = async (file: File) => {
   loading.set(true);
 
   try {
-    const img = await loadImage(url);
-    const options = new faceapi.TinyFaceDetectorOptions({
-      inputSize: 800,
-      scoreThreshold: 0.05,
-    });
-    const results = await faceapi
-      .detectAllFaces(img, options)
-      .withFaceLandmarks()
-      .withAgeAndGender();
-    detections.set(results);
-  } finally {
+    loadedImg = await loadImage(url);
+    await runDetection(loadedImg);
+  } catch {
     loading.set(false);
   }
 };
@@ -137,7 +172,6 @@ imageUrl.subscribe(url => {
     return;
   }
   imageContainer.style.display = "";
-  imgEl.src = url;
 });
 
 detections.subscribe(faces => {
@@ -179,6 +213,11 @@ const thresholdPct = threshold.derive(
   t => t / 100,
 );
 
+const perturbPct = perturbStrength.derive(
+  s => Math.round((s / 255) * 100),
+  s => Math.round((s / 100) * 255),
+);
+
 const controls = (
   <section id="controls">
     <label>
@@ -210,6 +249,18 @@ const controls = (
         />
         landmarks
       </label>
+      <label>
+        perturbation: <input type="range" min="0" max="100" value={perturbPct.str(Number)} />
+        <span class="threshold-value">{perturbPct.str()}%</span>
+      </label>
+      <button
+        type="button"
+        _onclick={() => {
+          if (loadedImg) runDetection(loadedImg);
+        }}
+      >
+        redetect
+      </button>
     </aside>
   </section>
 );
