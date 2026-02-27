@@ -7,10 +7,10 @@ type FaceResult = faceapi.WithAge<
   faceapi.WithGender<faceapi.WithFaceLandmarks<{ detection: faceapi.FaceDetection }>>
 >;
 
-const modelsLoaded = new Signal(false);
-const loading = new Signal(false);
+const statusText = new Signal("");
 const imageUrl = new Signal<string | null>(null);
 const detections = new Signal<FaceResult[]>([]);
+let detecting = false;
 
 const threshold = new Signal(0.3);
 const showLandmarks = new Signal(true);
@@ -39,7 +39,7 @@ const applyPerturbation = (img: HTMLImageElement, strength: number): string => {
 };
 
 const runDetection = async (img: HTMLImageElement) => {
-  loading.set(true);
+  statusText.set("detecting...");
   const dataUrl = applyPerturbation(img, perturbStrength.get());
   imgEl.src = dataUrl;
   try {
@@ -52,18 +52,19 @@ const runDetection = async (img: HTMLImageElement) => {
       .withFaceLandmarks()
       .withAgeAndGender();
     detections.set(results);
-  } finally {
-    loading.set(false);
+  } catch (err) {
+    statusText.set(`detection failed: ${err}`);
   }
 };
 
 (async () => {
+  statusText.set("loading models…");
   await Promise.all([
     faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
     faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL),
     faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
   ]);
-  modelsLoaded.set(true);
+  statusText.set("");
 })();
 
 const loadImage = (src: string): Promise<HTMLImageElement> =>
@@ -76,7 +77,7 @@ const loadImage = (src: string): Promise<HTMLImageElement> =>
 
 const processFile = async (file: File) => {
   if (!file.type.startsWith("image/")) return;
-  if (loading.get()) return;
+  if (detecting) return;
 
   const prev = imageUrl.get();
   if (prev) URL.revokeObjectURL(prev);
@@ -84,13 +85,13 @@ const processFile = async (file: File) => {
 
   const url = URL.createObjectURL(file);
   imageUrl.set(url);
-  loading.set(true);
+  detecting = true;
 
   try {
     loadedImg = await loadImage(url);
     await runDetection(loadedImg);
   } catch {
-    loading.set(false);
+    detecting = false;
   }
 };
 
@@ -189,22 +190,12 @@ showLandmarks.subscribe(() => {
   drawOverlay(detections.get(), imgEl);
 });
 
-const statusText = new Signal("");
-
-modelsLoaded.subscribeImmediate(loaded => {
-  statusText.set(loaded ? "" : "loading models…");
-});
-loading.subscribe(l => {
-  if (l) statusText.set("detecting…");
-  else if (modelsLoaded.get()) statusText.set("");
-});
 detections.subscribe(faces => {
-  if (!loading.get() && modelsLoaded.get() && imageUrl.get()) {
-    statusText.set(
-      faces.length === 0
-        ? "no faces detected"
-        : `${faces.length} face${faces.length === 1 ? "" : "s"} detected`,
-    );
+  const count = faces.filter(it => it.detection.score >= threshold.get()).length;
+  if (count === 0) {
+    statusText.set("no faces detected");
+  } else {
+    statusText.set(`${count} face${count === 1 ? "" : "s"} detected`);
   }
 });
 
@@ -231,8 +222,6 @@ const controls = (
       />
     </label>
     <p class="hint">or paste / drop an image anywhere on the page</p>
-    <p class="status">{statusText}</p>
-
     <aside>
       <label>
         detection threshold:{" "}
@@ -262,6 +251,8 @@ const controls = (
         redetect
       </button>
     </aside>
+
+    <p class="status">{statusText}</p>
   </section>
 );
 
