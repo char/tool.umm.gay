@@ -90,7 +90,7 @@ const processFile = async (file: File) => {
   try {
     loadedImg = await loadImage(url);
     await runDetection(loadedImg);
-  } catch {
+  } finally {
     detecting = false;
   }
 };
