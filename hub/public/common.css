@@ -1,0 +1,148 @@
+:root {
+  font-family: sans-serif;
+  font-size: 1.25rem;
+  background-color: var(--bg);
+  color: var(--text);
+
+  /* base colors */
+  --bg: oklch(20% 0.013 315);
+  --accent: oklch(80% 0.21 309);
+  --text: oklch(95% 0.044 309);
+
+  /* derived tones */
+  --bg-raised: oklch(from var(--bg) calc(l + 0.06) calc(c + 0.02) h);
+  --bg-raised-hover: oklch(from var(--bg) calc(l + 0.12) calc(c + 0.024) h);
+  --bg-raised-active: oklch(from var(--bg) calc(l + 18) calc(c + 0.023) h);
+  --border: oklch(from var(--bg) calc(l + 0.27) calc(c + 0.046) h);
+  --border-card: oklch(from var(--bg) calc(l + 0.19) calc(c + 0.05) h);
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+main {
+  max-width: 960px;
+  padding: 1em;
+  margin: 0 auto;
+}
+
+h1 {
+  margin: 0 0 0.25em;
+}
+
+a {
+  color: var(--accent);
+}
+
+button {
+  font: inherit;
+  font-size: 1rem;
+  background: var(--bg-raised);
+  color: inherit;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.25em 0.75em;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--bg-raised-hover);
+  }
+
+  &:active {
+    background: var(--bg-raised-active);
+  }
+}
+
+input[type="text"],
+input[type="number"] {
+  padding: 0.2em 0.25em;
+  margin: 0.125em;
+  font: inherit;
+  font-size: 1rem;
+  outline: none;
+  border-radius: 0.25em;
+  background-color: white;
+  border: 2px solid white;
+  color: oklch(20% 0 0);
+
+  &:focus {
+    border-color: var(--accent);
+  }
+}
+
+input[type="file"] {
+  font: inherit;
+  font-size: 1rem;
+  color: inherit;
+  cursor: pointer;
+}
+
+input[type="range"] {
+  accent-color: var(--accent);
+
+  /* will remove when webkit+blink support accent-color */
+  &::-webkit-slider-thumb {
+    background: var(--accent);
+  }
+  &::-webkit-slider-runnable-track {
+    background: oklch(from var(--accent) calc(l - 30) c h);
+  }
+}
+
+input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
+select {
+  font: inherit;
+  font-size: 1rem;
+  background: var(--bg-raised);
+  color: inherit;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.2em 0.4em;
+  cursor: pointer;
+
+  &:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+}
+
+textarea {
+  font: inherit;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.5em;
+  outline: none;
+  resize: vertical;
+
+  &:focus {
+    border-color: var(--accent);
+  }
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.6;
+}
+
+body.drag-over::after {
+  content: attr(data-drop-label, "drop here");
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  border: 3px dashed var(--accent);
+  pointer-events: none;
+  z-index: 9999;
+}

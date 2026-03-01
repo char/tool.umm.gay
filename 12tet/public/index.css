@@ -1,0 +1,17 @@
+header {
+  margin-bottom: 1em;
+}
+
+a {
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent);
+}
+
+input[type="text"] {
+  width: 8ch;
+}
+
+aside {
+  display: inline-block;
+  font-size: 0.8em;
+}

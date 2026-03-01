@@ -224,8 +224,7 @@ const controls = (
     <p class="hint">or paste / drop an image anywhere on the page</p>
     <aside>
       <label>
-        detection threshold:{" "}
-        <input type="range" min="1" max="99" value={thresholdPct.str(Number)} />
+        threshold: <input type="range" min="1" max="99" value={thresholdPct.str(Number)} />
         <span class="threshold-value">{thresholdPct.str()}%</span>
       </label>
       <label>
@@ -256,6 +255,7 @@ const controls = (
   </section>
 );
 
+document.body.dataset.dropLabel = "drop image here";
 document.addEventListener("dragenter", e => {
   e.preventDefault();
   document.body.classList.add("drag-over");

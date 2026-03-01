@@ -125,6 +125,7 @@ images.subscribe((imgs) => {
   resultsSection.replaceChildren(...imgs.map(renderResult));
 });
 
+document.body.dataset.dropLabel = "drop images here";
 document.addEventListener("dragenter", (e) => {
   e.preventDefault();
   document.body.classList.add("drag-over");
