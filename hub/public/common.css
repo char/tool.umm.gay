@@ -82,14 +82,6 @@ input[type="file"] {
 
 input[type="range"] {
   accent-color: var(--accent);
-
-  /* will remove when webkit+blink support accent-color */
-  &::-webkit-slider-thumb {
-    background: var(--accent);
-  }
-  &::-webkit-slider-runnable-track {
-    background: oklch(from var(--accent) calc(l - 30) c h);
-  }
 }
 
 input[type="checkbox"] {
