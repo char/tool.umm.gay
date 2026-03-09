@@ -1,0 +1,12 @@
+{
+  "lock": false,
+  "imports": {
+    "@char/aftercare": "jsr:@char/aftercare@^0.6.8",
+    "chrono-node": "npm:chrono-node@^2.9.0"
+  },
+  "compilerOptions": {
+    "lib": ["deno.window", "dom"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "@char/aftercare"
+  }
+}

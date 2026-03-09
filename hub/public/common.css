@@ -12,7 +12,7 @@
   /* derived tones */
   --bg-raised: oklch(from var(--bg) calc(l + 0.06) calc(c + 0.02) h);
   --bg-raised-hover: oklch(from var(--bg) calc(l + 0.12) calc(c + 0.024) h);
-  --bg-raised-active: oklch(from var(--bg) calc(l + 18) calc(c + 0.023) h);
+  --bg-raised-active: oklch(from var(--bg) calc(l + 0.18) calc(c + 0.023) h);
   --border: oklch(from var(--bg) calc(l + 0.27) calc(c + 0.046) h);
   --border-card: oklch(from var(--bg) calc(l + 0.19) calc(c + 0.05) h);
 }

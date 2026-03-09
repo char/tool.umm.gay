@@ -7,6 +7,7 @@
     "build:img": "cd img && deno run -A ./_build.ts",
     "build:chords": "cd chords && deno run -A ./_build.ts",
     "build:facemodels": "cd facemodels && deno run -A ./_build.ts",
+    "build:time": "cd time && deno run -A ./_build.ts",
     "build": {
       "dependencies": [
         "build:hub",
@@ -14,7 +15,8 @@
         "build:irclogs",
         "build:img",
         "build:chords",
-        "build:facemodels"
+        "build:facemodels",
+        "build:time"
       ]
     }
   },
