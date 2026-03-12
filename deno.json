@@ -1,5 +1,6 @@
 {
   "lock": false,
+  "workspace": ["facemodels", "time"],
   "tasks": {
     "build:hub": "cd hub && deno run -A ./build.ts",
     "build:12tet": "cd 12tet && deno run -A ./_build.ts",
