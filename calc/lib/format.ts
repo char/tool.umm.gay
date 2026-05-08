@@ -1,5 +1,5 @@
 import { type Quantity, type UnitTerm, asNum, exprFactor } from "./quantity.ts";
-import { BASE_UNIT, type DimKey, resolveUnit } from "./units.ts";
+import { BASE_UNIT, DERIVED_UNITS, type DimKey, dimEq, resolveUnit } from "./units.ts";
 
 export interface FormatOptions {
   precision?: number;
@@ -69,6 +69,18 @@ function formatMixed(valueInBase: number, groups: UnitTerm[][], prec: number): s
 
 function chooseDisplay(q: Quantity): UnitTerm[] {
   const combined = combineLikeTerms(q.expr);
+
+  // if the net dim coincides with a familiar derived unit, prefer it
+  // e.g. (A * V = W, N * m = J, 1/s = Hz).
+
+  // we leave plain unit values alone (1 dim, exp = 1) so that "5 Wh" entered in
+  // without arithmetic doesn't become 18000 J.
+  const isUserNamed = combined.length === 1 && combined[0].exp === 1;
+  if (!isUserNamed) {
+    for (const d of DERIVED_UNITS) {
+      if (dimEq(q.dim, d.dim)) return [{ sym: d.sym, exp: 1 }];
+    }
+  }
 
   const contributorsPerDim = new Map<DimKey, Set<string>>();
   for (const t of combined) {

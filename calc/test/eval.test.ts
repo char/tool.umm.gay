@@ -156,6 +156,25 @@ Deno.test("large-number scalar constants", () => {
   assertEquals(run("2 billion bytes → GB"), "2 GB");
 });
 
+Deno.test("derived units emerge from arithmetic", () => {
+  assertEquals(run("3 A * 3 V"), "9 W");
+  assertEquals(run("3 V * 3 A"), "9 W");
+  assertEquals(run("5 W * 2 s"), "10 J");
+  assertEquals(run("5 N * 3 m"), "15 J");
+  assertEquals(run("10 N / 2 m^2"), "5 Pa");
+  assertEquals(run("2 A * 3 s"), "6 C");
+  // user explicitly named the derived unit → keep it
+  assertEquals(run("5 W + 3 W"), "8 W");
+  assertEquals(run("5 Wh"), "5 Wh");
+  // no derived match → leave as base composition
+  assertEquals(run("5 m * 10 s"), "50 m·s");
+  // inverse-time collapses to Hz
+  assertEquals(run("1 / 10 sec"), "0.1 Hz");
+  assertEquals(run("1 / 1 s"), "1 Hz");
+  // but inverse-length has no derived counterpart
+  assertEquals(run("1 / 1 m"), "1 m\u207b\u00b9");
+});
+
 Deno.test("angles", () => {
   assertEquals(run("sin(90°)"), "1");
   assertEquals(run("sin(pi/2)"), "1");
