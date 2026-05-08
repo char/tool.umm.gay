@@ -1,0 +1,18 @@
+{
+  "grammars": [
+    {
+      "name": "calc",
+      "camelcase": "Calc",
+      "scope": "source.calc",
+      "path": ".",
+      "file-types": ["calc"]
+    }
+  ],
+  "metadata": {
+    "version": "0.0.1",
+    "license": "MIT",
+    "description": "tree-sitter grammar for the calc lib",
+    "authors": [{ "name": "charlotte" }]
+  },
+  "bindings": {}
+}
