@@ -182,6 +182,7 @@ function doBinop(op: BinOp, a: Quantity, b: Quantity, sp: Span): Quantity {
       return { value, dim: a.dim, expr: pickDisplay(a, b) };
     }
     case "mul":
+    case "juxt":
       return {
         value: av * bv,
         dim: dimMul(a.dim, b.dim),

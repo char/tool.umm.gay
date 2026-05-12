@@ -1,7 +1,7 @@
 import { Language, type Node as SyntaxNode, Parser } from "npm:web-tree-sitter@^0.26.8";
 import { CalcError, type Span } from "./errors.ts";
 
-export type BinOp = "add" | "sub" | "mul" | "div" | "pow";
+export type BinOp = "add" | "sub" | "mul" | "div" | "pow" | "juxt";
 
 export type Expr =
   | { kind: "num"; value: number | bigint; span: Span }
@@ -103,7 +103,7 @@ function toExpr(node: SyntaxNode): Expr {
     case "pow":
       return binop(opFromText(node.childForFieldName("op")!.text), node);
     case "juxt":
-      return binop("mul", node);
+      return binop("juxt", node);
     case "convert": {
       const targets = node.childForFieldName("targets")!;
       const ts: Expr[] = [];
@@ -158,6 +158,7 @@ const BINOP_INFO: Record<BinOp, { sym: string; prec: number; rightAssoc: boolean
   sub: { sym: "-", prec: 10, rightAssoc: false },
   mul: { sym: "×", prec: 20, rightAssoc: false },
   div: { sym: "/", prec: 20, rightAssoc: false },
+  juxt: { sym: "", prec: 30, rightAssoc: false },
   pow: { sym: "^", prec: 40, rightAssoc: true },
 };
 const PREC_CONVERT = 5;
@@ -184,7 +185,8 @@ function showExpr(e: Expr, ctx: number): string {
       const op = BINOP_INFO[e.op];
       const lhs = showExpr(e.lhs, op.rightAssoc ? op.prec + 1 : op.prec);
       const rhs = showExpr(e.rhs, op.rightAssoc ? op.prec : op.prec + 1);
-      return wrap(`${lhs} ${op.sym} ${rhs}`, op.prec, ctx);
+      const sep = e.op === "juxt" ? " " : ` ${op.sym} `;
+      return wrap(`${lhs}${sep}${rhs}`, op.prec, ctx);
     }
     case "convert": {
       const targets = e.targets.map(t => showExpr(t, 0)).join(", ");
