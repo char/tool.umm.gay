@@ -1,35 +1,43 @@
-import repl from "node:repl";
 import process from "node:process";
-import { CalcError, format, parseProgram, Session, showProgram } from "./mod.ts";
+import {
+  CalcError,
+  format,
+  highlight,
+  parseProgram,
+  renderAnsi,
+  Session,
+  showProgram,
+} from "./mod.ts";
+import { readLine } from "./_line-editor.ts";
 
 const session = new Session();
+const classify = (name: string) => session.classifyIdent(name);
+const colorize = process.stdout.isTTY
+  ? (line: string) => renderAnsi(highlight(line, classify))
+  : (line: string) => line;
 
-repl.start({
-  prompt: "> ",
-  ignoreUndefined: true,
-  preview: false,
-  completer: (line: string) => [[], line],
-  eval: (input, _context, _filename, cb) => {
-    const src = input.trim();
-    if (src === "") return cb(null, undefined);
-    try {
-      const stmts = parseProgram(src);
-      const parsed = showProgram(stmts)
-        .split("\n")
-        .map(l => `  ${l}`)
-        .join("\n");
-      process.stdout.write(`${parsed}\n`);
-      cb(null, format(session.evaluateStmts(stmts)));
-    } catch (e) {
-      if (e instanceof CalcError) {
-        const { start, end } = e.span;
-        process.stdout.write(`  ${src}\n`);
-        process.stdout.write(`  ${" ".repeat(start)}${"^".repeat(Math.max(1, end - start))}\n`);
-        process.stdout.write(`error: ${e.message}\n`);
-        return cb(null, undefined);
-      }
-      cb(e instanceof Error ? e : new Error(String(e)), undefined);
+const write = (s: string) => process.stdout.write(s);
+
+while (true) {
+  const input = await readLine({ prompt: "> ", render: colorize });
+  if (input === undefined) break;
+  const src = input.trim();
+  if (src === "") continue;
+
+  try {
+    const stmts = parseProgram(src);
+    for (const line of colorize(showProgram(stmts)).split("\n")) write(`  ${line}\n`);
+    write(`${format(session.evaluateStmts(stmts))}\n`);
+  } catch (e) {
+    if (e instanceof CalcError) {
+      const { start, end } = e.span;
+      write(`  ${src}\n`);
+      write(`  ${" ".repeat(start)}${"^".repeat(Math.max(1, end - start))}\n`);
+      write(`error: ${e.message}\n`);
+    } else {
+      write(`internal error: ${e instanceof Error ? e.message : String(e)}\n`);
     }
-  },
-  writer: x => (typeof x === "string" ? x : ""),
-});
+  }
+}
+
+process.exit(0);

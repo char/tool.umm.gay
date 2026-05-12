@@ -1,4 +1,4 @@
-import { Language, type Node as SyntaxNode, Parser } from "npm:web-tree-sitter@^0.26.8";
+import { Language, type Node as SyntaxNode, Parser, type Tree } from "npm:web-tree-sitter@^0.26.8";
 import { CalcError, type Span } from "./errors.ts";
 
 export type BinOp = "add" | "sub" | "mul" | "div" | "pow" | "juxt";
@@ -24,6 +24,10 @@ const parser = new Parser();
   parser.setLanguage(await Language.load(new Uint8Array(await res.arrayBuffer())));
 }
 
+export function parseTree(src: string): Tree | undefined {
+  return parser.parse(src) ?? undefined;
+}
+
 export function parseProgram(src: string): Stmt[] {
   const tree = parser.parse(src);
   if (!tree) throw new CalcError("parse", "parse failed", { start: 0, end: src.length });
@@ -35,21 +39,29 @@ export function parseProgram(src: string): Stmt[] {
       err ? nodeSpan(err) : { start: 0, end: src.length },
     );
   }
-  const stmts: Stmt[] = [];
-  for (let i = 0; i < tree.rootNode.namedChildCount; i++) {
-    stmts.push(toStmt(tree.rootNode.namedChild(i)!));
-  }
-  return stmts;
+  return namedChildren(tree.rootNode).map(toStmt);
 }
 
-function findError(node: SyntaxNode): SyntaxNode | null {
+// comments are declared as `extras` in the grammar, which means they can
+// appear anywhere whitespace can. they still show up in the syntax tree
+// as named children, so we have to filter them out when walking structure.
+function namedChildren(node: SyntaxNode): SyntaxNode[] {
+  const out: SyntaxNode[] = [];
+  for (let i = 0; i < node.namedChildCount; i++) {
+    const c = node.namedChild(i)!;
+    if (c.type !== "comment") out.push(c);
+  }
+  return out;
+}
+
+function findError(node: SyntaxNode): SyntaxNode | undefined {
   if (node.type === "ERROR" || node.isMissing) return node;
-  if (!node.hasError) return null;
+  if (!node.hasError) return undefined;
   for (let i = 0; i < node.childCount; i++) {
     const e = findError(node.child(i)!);
     if (e) return e;
   }
-  return null;
+  return undefined;
 }
 
 function toStmt(node: SyntaxNode): Stmt {
@@ -91,7 +103,7 @@ function toExpr(node: SyntaxNode): Expr {
     case "identifier":
       return { kind: "ident", name: node.text, span: nodeSpan(node) };
     case "parens":
-      return toExpr(node.namedChild(0)!);
+      return toExpr(namedChildren(node)[0]);
     case "unary":
       return {
         kind: "neg",
@@ -106,46 +118,52 @@ function toExpr(node: SyntaxNode): Expr {
       return binop("juxt", node);
     case "convert": {
       const targets = node.childForFieldName("targets")!;
-      const ts: Expr[] = [];
-      for (let i = 0; i < targets.namedChildCount; i++) {
-        ts.push(toExpr(targets.namedChild(i)!));
-      }
       return {
         kind: "convert",
         arg: toExpr(node.childForFieldName("arg")!),
-        targets: ts,
+        targets: namedChildren(targets).map(toExpr),
         span: nodeSpan(node),
       };
     }
     case "call": {
       const fn = node.childForFieldName("fn")!;
-      const args: Expr[] = [];
-      for (let i = 1; i < node.namedChildCount; i++) {
-        args.push(toExpr(node.namedChild(i)!));
-      }
+      const args = namedChildren(node).slice(1).map(toExpr);
       return { kind: "call", fn: fn.text, args, span: nodeSpan(node) };
     }
   }
   throw new CalcError("parse", `unexpected \`${node.type}\``, nodeSpan(node));
 }
 
+const BIN_OP_TEXT: Record<string, BinOp> = {
+  "+": "add",
+  "-": "sub",
+  "*": "mul",
+  "·": "mul",
+  "×": "mul",
+  "/": "div",
+  "^": "pow",
+  "**": "pow",
+};
+const KEYWORD_TEXT = new Set(["let", "to", "in", "→", "->"]);
+const PUNCT_TEXT = new Set(["(", ")", ",", ";"]);
+
+export type TokenKind = "kw" | "op" | "punct";
+
+/**
+ * categorize an anonymous tree-sitter token by its literal text. returns
+ * undefined for tokens that aren't display-categorized (e.g. whitespace).
+ */
+export function tokenKind(text: string): TokenKind | undefined {
+  if (KEYWORD_TEXT.has(text)) return "kw";
+  if (text === "=" || text in BIN_OP_TEXT) return "op";
+  if (PUNCT_TEXT.has(text)) return "punct";
+  return undefined;
+}
+
 function opFromText(text: string): BinOp {
-  switch (text) {
-    case "+":
-      return "add";
-    case "-":
-      return "sub";
-    case "*":
-    case "·":
-    case "×":
-      return "mul";
-    case "/":
-      return "div";
-    case "^":
-    case "**":
-      return "pow";
-  }
-  throw new Error(`unknown op: ${text}`);
+  const op = BIN_OP_TEXT[text];
+  if (!op) throw new Error(`unknown op: ${text}`);
+  return op;
 }
 
 function nodeSpan(node: SyntaxNode): Span {
@@ -186,7 +204,11 @@ function showExpr(e: Expr, ctx: number): string {
       const lhs = showExpr(e.lhs, op.rightAssoc ? op.prec + 1 : op.prec);
       const rhs = showExpr(e.rhs, op.rightAssoc ? op.prec : op.prec + 1);
       const sep = e.op === "juxt" ? " " : ` ${op.sym} `;
-      return wrap(`${lhs}${sep}${rhs}`, op.prec, ctx);
+      const inner = `${lhs}${sep}${rhs}`;
+      // division always gets parens to disambiguate evaluation order
+      //  e.g. `a / b x` reads unambiguously as `(a / b x)` instead of `(a / b) x`
+      if (e.op === "div") return `(${inner})`;
+      return wrap(inner, op.prec, ctx);
     }
     case "convert": {
       const targets = e.targets.map(t => showExpr(t, 0)).join(", ");

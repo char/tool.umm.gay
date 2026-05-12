@@ -1,4 +1,5 @@
 import { type BinOp, type Expr, type Stmt, parseProgram } from "./parse.ts";
+import type { IdentKind } from "./classify.ts";
 export type { Stmt };
 import { CalcError, type Span } from "./errors.ts";
 import {
@@ -89,6 +90,13 @@ export class Session {
 
   bindingsView(): ReadonlyMap<string, Quantity> {
     return this.bindings;
+  }
+
+  classifyIdent(name: string): IdentKind {
+    if (this.bindings.has(name)) return "var";
+    if (resolveUnit(name)) return "unit";
+    if (name in CONSTANTS) return "const";
+    return "unbound";
   }
 
   private execStmt(s: Stmt): Quantity {
