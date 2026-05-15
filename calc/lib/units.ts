@@ -49,7 +49,7 @@ function zip(a: Dim, b: Dim, f: (x: number, y: number) => number): Dim {
 // preferred derived-unit symbols, in priority order. used when assembling a
 // display from a multi-unit expression whose net dim happens to coincide with
 // a named derived quantity (e.g. A·V → W, N·m → J).
-export const DERIVED_UNITS: { sym: string; dim: Dim }[] = [
+export const AUTOCOERCE_UNITS: { sym: string; dim: Dim }[] = [
   { sym: "N", dim: { len: 1, mass: 1, time: -2 } },
   { sym: "J", dim: { len: 2, mass: 1, time: -2 } },
   { sym: "W", dim: { len: 2, mass: 1, time: -3 } },
@@ -57,6 +57,10 @@ export const DERIVED_UNITS: { sym: string; dim: Dim }[] = [
   { sym: "V", dim: { len: 2, mass: 1, time: -3, curr: -1 } },
   { sym: "C", dim: { time: 1, curr: 1 } },
   { sym: "Hz", dim: { time: -1 } },
+  // symmetric to Hz: lets `1 / 10 Hz` collapse to seconds instead of `Hz⁻¹`.
+  // guarded against rewriting plain `5 min` → `300 s` by the isUserNamed check
+  // in chooseDisplay.
+  { sym: "s", dim: { time: 1 } },
 ];
 
 export const BASE_UNIT: Record<DimKey, string> = {

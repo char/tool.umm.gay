@@ -1,5 +1,5 @@
 import { type Quantity, type UnitTerm, asNum, exprFactor } from "./quantity.ts";
-import { BASE_UNIT, DERIVED_UNITS, type DimKey, dimEq, resolveUnit } from "./units.ts";
+import { AUTOCOERCE_UNITS, BASE_UNIT, type DimKey, dimEq, resolveUnit } from "./units.ts";
 
 export interface FormatOptions {
   precision?: number;
@@ -77,7 +77,7 @@ function chooseDisplay(q: Quantity): UnitTerm[] {
   // without arithmetic doesn't become 18000 J.
   const isUserNamed = combined.length === 1 && combined[0].exp === 1;
   if (!isUserNamed) {
-    for (const d of DERIVED_UNITS) {
+    for (const d of AUTOCOERCE_UNITS) {
       if (dimEq(q.dim, d.dim)) return [{ sym: d.sym, exp: 1 }];
     }
   }

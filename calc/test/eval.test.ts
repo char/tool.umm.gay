@@ -171,6 +171,9 @@ Deno.test("derived units emerge from arithmetic", () => {
   // inverse-time collapses to Hz
   assertEquals(run("1 / 10 sec"), "0.1 Hz");
   assertEquals(run("1 / 1 s"), "1 Hz");
+  // and inverse-Hz collapses back to seconds
+  assertEquals(run("1 / 10 Hz"), "0.1 s");
+  assertEquals(run("1 / 0.1 Hz"), "10 s");
   // but inverse-length has no derived counterpart
   assertEquals(run("1 / 1 m"), "1 m\u207b\u00b9");
 });
