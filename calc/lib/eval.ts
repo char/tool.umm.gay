@@ -32,26 +32,10 @@ const CONSTANTS: Record<string, number> = {
   quadrillion: 1e15,
 };
 
-const FNS_1: Record<string, (x: number) => number> = {
-  sin: Math.sin,
-  cos: Math.cos,
-  tan: Math.tan,
-  asin: Math.asin,
-  acos: Math.acos,
-  atan: Math.atan,
-  sinh: Math.sinh,
-  cosh: Math.cosh,
-  tanh: Math.tanh,
-  ln: Math.log,
-  log: Math.log10,
-  log10: Math.log10,
-  log2: Math.log2,
-  exp: Math.exp,
-  abs: Math.abs,
-  floor: Math.floor,
-  ceil: Math.ceil,
-  round: Math.round,
-};
+const scalarFn =
+  (f: (x: number) => number) =>
+  (q: Quantity): Quantity =>
+    scalar(f(asNum(q.value)));
 
 function bswap(v: number | bigint, bits: 16 | 32 | 64): number | bigint {
   const mask = (1n << BigInt(bits)) - 1n;
@@ -63,6 +47,30 @@ function bswap(v: number | bigint, bits: 16 | 32 | 64): number | bigint {
   }
   return bits === 64 ? r : Number(r);
 }
+
+const FNS_1: Record<string, (q: Quantity) => Quantity> = {
+  sin: scalarFn(Math.sin),
+  cos: scalarFn(Math.cos),
+  tan: scalarFn(Math.tan),
+  asin: scalarFn(Math.asin),
+  acos: scalarFn(Math.acos),
+  atan: scalarFn(Math.atan),
+  sinh: scalarFn(Math.sinh),
+  cosh: scalarFn(Math.cosh),
+  tanh: scalarFn(Math.tanh),
+  ln: scalarFn(Math.log),
+  log: scalarFn(Math.log10),
+  log10: scalarFn(Math.log10),
+  log2: scalarFn(Math.log2),
+  exp: scalarFn(Math.exp),
+  abs: scalarFn(Math.abs),
+  floor: scalarFn(Math.floor),
+  ceil: scalarFn(Math.ceil),
+  round: scalarFn(Math.round),
+  bswap16: q => scalar(bswap(q.value, 16)),
+  bswap32: q => scalar(bswap(q.value, 32)),
+  bswap64: q => scalar(bswap(q.value, 64)),
+};
 
 const BASES = ["hex", "bin", "oct"] as const;
 type Base = (typeof BASES)[number];
@@ -244,19 +252,11 @@ function doCall(name: string, args: Quantity[], sp: Span): Quantity {
       expr: a.expr.map(t => ({ sym: t.sym, exp: t.exp * 0.5 })),
     };
   }
-  if (name === "bswap16" || name === "bswap32" || name === "bswap64") {
-    if (args.length !== 1) throw new CalcError("call", `${name}: expects 1 arg`, sp);
-    if (!dimIsScalar(args[0].dim)) {
-      throw new CalcError("dim-mismatch", `${name}: expects scalar`, sp);
-    }
-    const bits = Number(name.slice(5)) as 16 | 32 | 64;
-    return scalar(bswap(args[0].value, bits));
-  }
   const f = FNS_1[name];
   if (!f) throw new CalcError("unknown-ident", `unknown function \`${name}\``, sp);
   if (args.length !== 1) throw new CalcError("call", `${name}: expects 1 arg`, sp);
   if (!dimIsScalar(args[0].dim)) {
     throw new CalcError("dim-mismatch", `${name}: expects dimensionless`, sp);
   }
-  return scalar(f(asNum(args[0].value)));
+  return f(args[0]);
 }

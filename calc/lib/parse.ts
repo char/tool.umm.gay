@@ -1,4 +1,9 @@
-import { Language, type Node as SyntaxNode, Parser, type Tree } from "npm:web-tree-sitter@^0.26.8";
+import {
+  Language,
+  type Node as SyntaxNode,
+  Parser,
+  type Tree,
+} from "npm:web-tree-sitter@^0.26.8";
 import { CalcError, type Span } from "./errors.ts";
 
 export type BinOp = "add" | "sub" | "mul" | "div" | "pow" | "juxt";
