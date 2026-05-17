@@ -197,8 +197,15 @@ function doBinop(op: BinOp, a: Quantity, b: Quantity, sp: Span): Quantity {
       const value = op === "add" ? av + bv : av - bv;
       return { value, dim: a.dim, expr: pickDisplay(a, b) };
     }
-    case "mul":
     case "juxt":
+      if (dimIsScalar(b.dim) && !dimIsScalar(a.dim))
+        throw new CalcError(
+          "dim-mismatch",
+          "tried to juxtapose non-trivial value with scalar",
+          sp,
+        );
+    /* falls through */
+    case "mul":
       return {
         value: av * bv,
         dim: dimMul(a.dim, b.dim),
