@@ -167,9 +167,5 @@ function formatNumber(n: number | bigint, prec: number): string {
   if (n === 0) return "0";
   if (!Number.isFinite(n)) return String(n);
   if (Number.isInteger(n) && Math.abs(n) < Number.MAX_SAFE_INTEGER) return String(n);
-  const abs = Math.abs(n);
-  if (abs >= 1e-4 && abs < 1e21) {
-    return Number(n.toPrecision(prec)).toString();
-  }
-  return n.toPrecision(prec);
+  return Number(n.toPrecision(prec)).toString();
 }
