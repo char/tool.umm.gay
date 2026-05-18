@@ -12,15 +12,16 @@ export interface FormatOptions {
   precision?: number;
 }
 
-export function format(result: EvalResult, opts?: FormatOptions): string;
-export function format(q: Quantity, opts?: FormatOptions, display?: Display): string;
-export function format(
-  input: EvalResult | Quantity,
+export function format(result: EvalResult, opts?: FormatOptions): string {
+  return formatQuantity(result.quantity, result.display, opts);
+}
+
+export function formatQuantity(
+  q: Quantity,
+  display: Display = { kind: "unit", expr: baseExpr(q) },
   opts: FormatOptions = {},
-  explicitDisplay?: Display,
 ): string {
   const prec = opts.precision ?? 6;
-  const { quantity: q, display } = unpack(input, explicitDisplay);
 
   if (display.kind === "base") return formatInBase(q.value, display.base);
 
@@ -33,17 +34,6 @@ export function format(
 
   if (expr.length === 0) return formatNumber(q.value, prec);
   return `${formatNumber(v / exprFactor(expr), prec)} ${formatExpr(expr)}`;
-}
-
-function unpack(
-  input: EvalResult | Quantity,
-  explicitDisplay?: Display,
-): { quantity: Quantity; display: Display } {
-  if ("quantity" in input) return input;
-  return {
-    quantity: input,
-    display: explicitDisplay ?? { kind: "unit", expr: baseExpr(input) },
-  };
 }
 
 function baseExpr(q: Quantity): UnitTerm[] {

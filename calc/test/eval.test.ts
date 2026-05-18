@@ -1,7 +1,7 @@
 // i vibecoded most of these test cases fwiw
 
 import { assertEquals, assertThrows } from "@std/assert";
-import { CalcError, evaluate, format, run, Session } from "../mod.ts";
+import { CalcError, evaluate, format, formatQuantity, run, Session } from "../mod.ts";
 
 Deno.test("scalar arithmetic", () => {
   assertEquals(run("1 + 2"), "3");
@@ -129,6 +129,7 @@ Deno.test("quantity and display are separate", () => {
   const result = evaluate("1 day → h");
   assertEquals(result.quantity, { value: 86400, dim: { time: 1 } });
   assertEquals(format(result), "24 h");
+  assertEquals(formatQuantity(result.quantity), "1 day");
 });
 
 Deno.test("ans", () => {

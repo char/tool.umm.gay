@@ -4,7 +4,7 @@ export type { ErrorKind, Span } from "./lib/errors.ts";
 export type { Stmt } from "./lib/eval.ts";
 export { CalcError } from "./lib/errors.ts";
 export { Session } from "./lib/eval.ts";
-export { format, type FormatOptions } from "./lib/format.ts";
+export { format, formatQuantity, type FormatOptions } from "./lib/format.ts";
 export { parseProgram, parseTree, showProgram } from "./lib/parse.ts";
 export type { Classify, IdentKind } from "./lib/classify.ts";
 export {

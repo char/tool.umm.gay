@@ -18,7 +18,6 @@ import {
   displayExpr,
   type EvalResult,
   exprFactor,
-  type Quantity,
   scalar,
   type UnitTerm,
   withDisplay,
@@ -103,14 +102,6 @@ export class Session {
 
   run(input: string): string {
     return format(this.evaluate(input));
-  }
-
-  bindingsView(): ReadonlyMap<string, Quantity> {
-    return new Map([...this.bindings].map(([name, result]) => [name, result.quantity]));
-  }
-
-  resultBindingsView(): ReadonlyMap<string, EvalResult> {
-    return this.bindings;
   }
 
   classifyIdent(name: string): IdentKind {
