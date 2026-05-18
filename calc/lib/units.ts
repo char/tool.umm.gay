@@ -1,8 +1,18 @@
-export type DimKey = "len" | "mass" | "time" | "curr" | "temp" | "mol" | "lum" | "byte";
+export const BASE_UNIT = {
+  len: "m",
+  mass: "kg",
+  time: "s",
+  curr: "A",
+  temp: "K",
+  mol: "mol",
+  lum: "cd",
+  byte: "byte",
+} as const;
 
+export type DimKey = keyof typeof BASE_UNIT;
 export type Dim = Readonly<Partial<Record<DimKey, number>>>;
 
-const DIM_KEYS: DimKey[] = ["len", "mass", "time", "curr", "temp", "mol", "lum", "byte"];
+const DIM_KEYS = Object.keys(BASE_UNIT) as DimKey[];
 
 export const SCALAR: Dim = Object.freeze({});
 
@@ -62,17 +72,6 @@ export const AUTOCOERCE_UNITS: { sym: string; dim: Dim }[] = [
   // in chooseDisplay.
   { sym: "s", dim: { time: 1 } },
 ];
-
-export const BASE_UNIT: Record<DimKey, string> = {
-  len: "m",
-  mass: "kg",
-  time: "s",
-  curr: "A",
-  temp: "K",
-  mol: "mol",
-  lum: "cd",
-  byte: "byte",
-};
 
 export interface UnitDef {
   dim: Dim;
