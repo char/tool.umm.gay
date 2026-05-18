@@ -11,6 +11,7 @@ export type ErrorKind =
   | "dim-mismatch"
   | "div-zero"
   | "bad-exponent"
+  | "bad-integer"
   | "call";
 
 export class CalcError extends Error {

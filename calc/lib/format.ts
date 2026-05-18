@@ -7,6 +7,7 @@ import {
   type UnitTerm,
 } from "./quantity.ts";
 import { AUTOCOERCE_UNITS, BASE_UNIT, dimEq, type DimKey, resolveUnit } from "./units.ts";
+import { CalcError } from "./errors.ts";
 
 export interface FormatOptions {
   precision?: number;
@@ -185,9 +186,12 @@ function formatExp(e: number): string {
 }
 
 function formatInBase(n: number | bigint, base: "hex" | "bin" | "oct"): string {
+  if (typeof n === "number" && !Number.isInteger(n)) {
+    throw new CalcError("bad-integer", "base formatting requires an integer", { start: 0, end: 0 });
+  }
   const radix = base === "hex" ? 16 : base === "bin" ? 2 : 8;
   const prefix = base === "hex" ? "0x" : base === "bin" ? "0b" : "0o";
-  const big = typeof n === "bigint" ? n : BigInt(Math.round(n));
+  const big = typeof n === "bigint" ? n : BigInt(n);
   const sign = big < 0n ? "-" : "";
   const mag = big < 0n ? -big : big;
   const digits = mag.toString(radix);

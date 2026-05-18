@@ -48,13 +48,21 @@ const scalarFn =
 
 function bswap(v: number | bigint, bits: 16 | 32 | 64): number | bigint {
   const mask = (1n << BigInt(bits)) - 1n;
-  let x = (typeof v === "bigint" ? v : BigInt(Math.trunc(v))) & mask;
+  let x = (typeof v === "bigint" ? v : BigInt(v)) & mask;
   let r = 0n;
   for (let i = 0; i < bits / 8; i++) {
     r = (r << 8n) | (x & 0xffn);
     x >>= 8n;
   }
   return bits === 64 ? r : Number(r);
+}
+
+function requireInteger(v: number | bigint, what: string, sp: Span): number | bigint {
+  if (typeof v === "bigint") return v;
+  if (!Number.isInteger(v)) {
+    throw new CalcError("bad-integer", `${what}: expects an integer`, sp);
+  }
+  return v;
 }
 
 const FNS_1: Record<string, (q: EvalResult) => EvalResult> = {
@@ -76,9 +84,12 @@ const FNS_1: Record<string, (q: EvalResult) => EvalResult> = {
   floor: scalarFn(Math.floor),
   ceil: scalarFn(Math.ceil),
   round: scalarFn(Math.round),
-  bswap16: q => scalar(bswap(q.quantity.value, 16)),
-  bswap32: q => scalar(bswap(q.quantity.value, 32)),
-  bswap64: q => scalar(bswap(q.quantity.value, 64)),
+};
+
+const BSWAP_BITS: Record<string, 16 | 32 | 64> = {
+  bswap16: 16,
+  bswap32: 32,
+  bswap64: 64,
 };
 
 const BASES = ["hex", "bin", "oct"] as const;
@@ -145,10 +156,17 @@ export class Session {
           if (!dimIsScalar(a.quantity.dim)) {
             throw new CalcError("dim-mismatch", "hex/bin/oct require a scalar", e.span);
           }
-          return withDisplay(a.quantity, {
-            kind: "base",
-            base: e.targets[0].name,
-          });
+          const value = requireInteger(a.quantity.value, `${e.targets[0].name} conversion`, e.span);
+          return withDisplay(
+            {
+              value,
+              dim: a.quantity.dim,
+            },
+            {
+              kind: "base",
+              base: e.targets[0].name,
+            },
+          );
         }
         const a = this.evalExpr(e.arg);
         const ts = e.targets.map(t => this.evalExpr(t));
@@ -292,6 +310,19 @@ function doCall(name: string, args: EvalResult[], sp: Span): EvalResult {
       },
     );
   }
+  const bits = BSWAP_BITS[name];
+  if (bits !== undefined) {
+    if (args.length !== 1) {
+      throw new CalcError("call", `${name}: expects 1 arg`, sp);
+    }
+    const a = args[0];
+    if (!dimIsScalar(a.quantity.dim)) {
+      throw new CalcError("dim-mismatch", `${name}: expects dimensionless`, sp);
+    }
+    const value = requireInteger(a.quantity.value, name, sp);
+    return scalar(bswap(value, bits));
+  }
+
   const f = FNS_1[name];
   if (!f) {
     throw new CalcError("unknown-ident", `unknown function \`${name}\``, sp);

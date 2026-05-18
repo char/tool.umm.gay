@@ -147,6 +147,11 @@ Deno.test("hex literals and hex display", () => {
   assertEquals(run("-1 → hex"), "-0x1");
 });
 
+Deno.test("base-conversion requires integers", () => {
+  assertThrows(() => run("1.5 → hex"), CalcError);
+  assertThrows(() => run("bswap16(1.5)"), CalcError);
+});
+
 Deno.test("bswap", () => {
   assertEquals(run("bswap32(0x12345678) → hex"), "0x78563412");
   assertEquals(run("bswap16(0xABCD) → hex"), "0xCDAB");
