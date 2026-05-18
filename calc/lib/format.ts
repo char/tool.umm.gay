@@ -1,22 +1,55 @@
-import { type Quantity, type UnitTerm, asNum, exprFactor } from "./quantity.ts";
-import { AUTOCOERCE_UNITS, BASE_UNIT, type DimKey, dimEq, resolveUnit } from "./units.ts";
+import {
+  asNum,
+  type Display,
+  type EvalResult,
+  exprFactor,
+  type Quantity,
+  type UnitTerm,
+} from "./quantity.ts";
+import { AUTOCOERCE_UNITS, BASE_UNIT, dimEq, type DimKey, resolveUnit } from "./units.ts";
 
 export interface FormatOptions {
   precision?: number;
 }
 
-export function format(q: Quantity, opts: FormatOptions = {}): string {
+export function format(result: EvalResult, opts?: FormatOptions): string;
+export function format(q: Quantity, opts?: FormatOptions, display?: Display): string;
+export function format(
+  input: EvalResult | Quantity,
+  opts: FormatOptions = {},
+  explicitDisplay?: Display,
+): string {
   const prec = opts.precision ?? 6;
-  if (q.base) return formatInBase(q.value, q.base);
-  const v = asNum(q.value);
-  if (q.mixed) return formatMixed(v, q.mixed, prec);
+  const { quantity: q, display } = unpack(input, explicitDisplay);
 
-  const expr = chooseDisplay(q);
+  if (display.kind === "base") return formatInBase(q.value, display.base);
+
+  const v = asNum(q.value);
+  if (display.kind === "mixed") return formatMixed(v, display.groups, prec);
+
+  const expr = chooseDisplay(q, display.expr);
   const auto = autoMixed(v, expr);
   if (auto) return formatMixed(v, auto, prec);
 
   if (expr.length === 0) return formatNumber(q.value, prec);
   return `${formatNumber(v / exprFactor(expr), prec)} ${formatExpr(expr)}`;
+}
+
+function unpack(
+  input: EvalResult | Quantity,
+  explicitDisplay?: Display,
+): { quantity: Quantity; display: Display } {
+  if ("quantity" in input) return input;
+  return {
+    quantity: input,
+    display: explicitDisplay ?? { kind: "unit", expr: baseExpr(input) },
+  };
+}
+
+function baseExpr(q: Quantity): UnitTerm[] {
+  return (Object.keys(q.dim) as DimKey[])
+    .filter(k => (q.dim[k] ?? 0) !== 0)
+    .map(k => ({ sym: BASE_UNIT[k], exp: q.dim[k]! }));
 }
 
 /** when nothing was explicitly converted, choose a sensible multi-unit
@@ -58,7 +91,9 @@ function formatMixed(valueInBase: number, groups: UnitTerm[][], prec: number): s
     const isLast = i === groups.length - 1;
     const count = isLast ? remaining / factor : Math.trunc(remaining / factor);
     if (!isLast) remaining -= count * factor;
-    if (count !== 0) parts.push(`${formatNumber(count, prec)} ${formatExpr(group)}`);
+    if (count !== 0) {
+      parts.push(`${formatNumber(count, prec)} ${formatExpr(group)}`);
+    }
   }
   if (parts.length === 0) {
     const last = groups[groups.length - 1];
@@ -67,8 +102,8 @@ function formatMixed(valueInBase: number, groups: UnitTerm[][], prec: number): s
   return parts.join(", ");
 }
 
-function chooseDisplay(q: Quantity): UnitTerm[] {
-  const combined = combineLikeTerms(q.expr);
+function chooseDisplay(q: Quantity, expr: UnitTerm[]): UnitTerm[] {
+  const combined = combineLikeTerms(expr);
 
   // if the net dim coincides with a familiar derived unit, prefer it
   // e.g. (A * V = W, N * m = J, 1/s = Hz).
@@ -116,7 +151,12 @@ function chooseDisplay(q: Quantity): UnitTerm[] {
 function combineLikeTerms(expr: UnitTerm[]): UnitTerm[] {
   const m = new Map<string, number>();
   for (const t of expr) m.set(t.sym, (m.get(t.sym) ?? 0) + t.exp);
-  return [...m.entries()].filter(([, e]) => e !== 0).map(([sym, exp]) => ({ sym, exp }));
+  return [...m.entries()]
+    .filter(([, e]) => e !== 0)
+    .map(([sym, exp]) => ({
+      sym,
+      exp,
+    }));
 }
 
 function formatExpr(expr: UnitTerm[]): string {
@@ -148,7 +188,9 @@ const SUPER: Record<string, string> = {
 
 function formatExp(e: number): string {
   if (e === 1) return "";
-  if (Number.isInteger(e)) return [...String(e)].map(c => SUPER[c] ?? c).join("");
+  if (Number.isInteger(e)) {
+    return [...String(e)].map(c => SUPER[c] ?? c).join("");
+  }
   return `^${e}`;
 }
 
@@ -166,6 +208,8 @@ function formatNumber(n: number | bigint, prec: number): string {
   if (typeof n === "bigint") return n.toString();
   if (n === 0) return "0";
   if (!Number.isFinite(n)) return String(n);
-  if (Number.isInteger(n) && Math.abs(n) < Number.MAX_SAFE_INTEGER) return String(n);
+  if (Number.isInteger(n) && Math.abs(n) < Number.MAX_SAFE_INTEGER) {
+    return String(n);
+  }
   return Number(n.toPrecision(prec)).toString();
 }

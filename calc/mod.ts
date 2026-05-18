@@ -1,6 +1,6 @@
-export type { Quantity, UnitTerm } from "./lib/quantity.ts";
+export type { Base, Display, EvalResult, Quantity, UnitTerm } from "./lib/quantity.ts";
 export type { Dim, DimKey } from "./lib/units.ts";
-export type { Span, ErrorKind } from "./lib/errors.ts";
+export type { ErrorKind, Span } from "./lib/errors.ts";
 export type { Stmt } from "./lib/eval.ts";
 export { CalcError } from "./lib/errors.ts";
 export { Session } from "./lib/eval.ts";
@@ -10,17 +10,17 @@ export type { Classify, IdentKind } from "./lib/classify.ts";
 export {
   ansiPalette,
   highlight,
+  type HighlightSpan,
   noColor,
   type Palette,
   renderAnsi,
-  type HighlightSpan,
   type SpanKind,
 } from "./lib/highlight.ts";
 
 import { Session } from "./lib/eval.ts";
-import type { Quantity } from "./lib/quantity.ts";
+import type { EvalResult } from "./lib/quantity.ts";
 
-export function evaluate(input: string): Quantity {
+export function evaluate(input: string): EvalResult {
   return new Session().evaluate(input);
 }
 

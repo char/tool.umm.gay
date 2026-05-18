@@ -1,4 +1,4 @@
-import { type Dim, SCALAR, resolveUnit } from "./units.ts";
+import { type Dim, resolveUnit, SCALAR } from "./units.ts";
 
 export interface UnitTerm {
   sym: string;
@@ -8,16 +8,37 @@ export interface UnitTerm {
 export interface Quantity {
   value: number | bigint;
   dim: Dim;
-  expr: UnitTerm[];
-  // render as comma list split greedily (e.g. feet, inch) - dim of group must match this.dim
-  mixed?: UnitTerm[][];
-  // base override (must be scalar to be set)
-  base?: "hex" | "bin" | "oct";
 }
 
-export const scalar = (v: number | bigint): Quantity => ({ value: v, dim: SCALAR, expr: [] });
+export type Base = "hex" | "bin" | "oct";
+
+export type Display =
+  | { kind: "unit"; expr: UnitTerm[] }
+  | { kind: "mixed"; groups: UnitTerm[][] }
+  | { kind: "base"; base: Base };
+
+export interface EvalResult {
+  quantity: Quantity;
+  display: Display;
+}
+
+export const scalar = (v: number | bigint): EvalResult => ({
+  quantity: { value: v, dim: SCALAR },
+  display: { kind: "unit", expr: [] },
+});
+
+export const withDisplay = (quantity: Quantity, display: Display): EvalResult => ({
+  quantity,
+  display,
+});
 
 export const asNum = (v: number | bigint): number => (typeof v === "bigint" ? Number(v) : v);
+
+export function displayExpr(display: Display): UnitTerm[] {
+  if (display.kind === "unit") return display.expr;
+  if (display.kind === "mixed") return display.groups[0] ?? [];
+  return [];
+}
 
 export function exprFactor(expr: UnitTerm[]): number {
   let f = 1;
