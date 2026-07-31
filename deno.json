@@ -6,6 +6,7 @@
     "build:12tet": "cd 12tet && deno run -A ./_build.ts",
     "build:irclogs": "cd irclogs && deno run -A ./_build.ts",
     "build:img": "cd img && deno run -A ./_build.ts",
+    "build:audio-a-b": "cd audio-a-b && deno run -A ./_build.ts",
     "build:chords": "cd chords && deno run -A ./_build.ts",
     "build:facemodels": "cd facemodels && deno run -A ./_build.ts",
     "build:time": "cd time && deno run -A ./_build.ts",
@@ -15,6 +16,7 @@
         "build:12tet",
         "build:irclogs",
         "build:img",
+        "build:audio-a-b",
         "build:chords",
         "build:facemodels",
         "build:time"
