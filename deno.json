@@ -1,9 +1,10 @@
 {
   "lock": false,
-  "workspace": ["calc", "facemodels", "time"],
+  "workspace": ["calc", "facemodels", "paper-k256", "time"],
   "tasks": {
     "build:hub": "cd hub && deno run -A ./build.ts",
     "build:12tet": "cd 12tet && deno run -A ./_build.ts",
+    "build:paper-k256": "cd paper-k256 && deno run -A ./_build.ts",
     "build:irclogs": "cd irclogs && deno run -A ./_build.ts",
     "build:img": "cd img && deno run -A ./_build.ts",
     "build:audio-a-b": "cd audio-a-b && deno run -A ./_build.ts",
@@ -14,6 +15,7 @@
       "dependencies": [
         "build:hub",
         "build:12tet",
+        "build:paper-k256",
         "build:irclogs",
         "build:img",
         "build:audio-a-b",
