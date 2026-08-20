@@ -1,4 +1,4 @@
-import "https://char.lt/esm/pipe.ts";
+import "https://esm.char.lt/citrus/0.1.0/mod.ts";
 
 import { Signal } from "@char/aftercare";
 import * as secp from "@noble/secp256k1";
@@ -29,9 +29,9 @@ mnemonic.subscribeImmediate((m) => {
   wordCount.set(words.length);
 
   try {
-    const pk = words.pipe(mnemonicToBuffer);
-    privKey.set(pk.pipe(secp.etc.bytesToHex));
-    didKey.set(pk.pipe(privToPubKey).pipe(exportAsDidKey));
+    const pk = words.$pipe(mnemonicToBuffer);
+    privKey.set(pk.$pipe(secp.etc.bytesToHex));
+    didKey.set(pk.$pipe(privToPubKey).$pipe(exportAsDidKey));
 
     mnemonicInput.setCustomValidity("");
   } catch (err) {

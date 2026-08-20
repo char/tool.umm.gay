@@ -18,7 +18,7 @@ export const bufferToMnemonic = (buf: Uint8Array): string =>
   bip39.entropyToMnemonic(buf, BIP39_WORDS_EN);
 
 export const mnemonicToBuffer = (words: string[]) =>
-  words.join(" ").pipe((m) => bip39.mnemonicToEntropy(m, BIP39_WORDS_EN));
+  words.join(" ").$pipe((m) => bip39.mnemonicToEntropy(m, BIP39_WORDS_EN));
 
 export const privToPubKey = (priv: secp.PrivKey) => secp.getPublicKey(priv);
 export const exportAsDidKey = (pub: Uint8Array) => {
