@@ -1,5 +1,5 @@
 // mixes the two synced sources into one output: out = gainA·A + gainB·B.
-// delta monitoring uses gainA = 1, gainB = -1, so identical inputs null to silence.
+// delta monitoring uses opposite-signed, independently trimmed gains.
 class ABMixer extends AudioWorkletProcessor {
   static get parameterDescriptors() {
     return [

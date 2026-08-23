@@ -67,6 +67,11 @@ const name: Record<Side, Signal<string>> = {
 };
 
 const selected = new Signal<Monitor>("A");
+const volume = new Signal(1);
+const trimDb: Record<Side, Signal<number>> = {
+  A: new Signal(0),
+  B: new Signal(0),
+};
 const playing = new Signal(false);
 const ready = new Signal(false);
 const status = new Signal("");
@@ -202,18 +207,18 @@ const seek = (pos: number) => {
 const applyGains = () => {
   if (!gainParam) return;
   const monitor = selected.get();
-  const targets: Record<Side, number> =
-    monitor === "delta"
-      ? { A: 1, B: -1 }
-      : { A: monitor === "A" ? 1 : 0, B: monitor === "B" ? 1 : 0 };
+  const master = volume.get();
   const t = ctx.currentTime;
   const ramp = 0.005; // short enough not to read as a crossfade, long enough to avoid clicks
   for (const side of ["A", "B"] as Side[]) {
+    const polarity =
+      monitor === "delta" ? (side === "A" ? 1 : -1) : monitor === side ? 1 : 0;
+    const target = polarity * master * 10 ** (trimDb[side].get() / 20);
     const p = gainParam[side];
     const current = p.value;
     p.cancelScheduledValues(t);
     p.setValueAtTime(current, t);
-    p.linearRampToValueAtTime(targets[side], t + ramp);
+    p.linearRampToValueAtTime(target, t + ramp);
   }
 };
 
@@ -302,6 +307,21 @@ const ioCard = (side: Side) => {
     if (f) loadFile(side, f);
   });
 
+  const trim = (
+    <input
+      type="range"
+      min="-12"
+      max="12"
+      step="0.1"
+      value="0"
+      aria-label={`${side} gain trim`}
+    />
+  ) as HTMLInputElement;
+  trim.addEventListener("input", () => {
+    trimDb[side].set(trim.valueAsNumber);
+    applyGains();
+  });
+
   const card = (
     <div class="io-card">
       <div class="io-head">
@@ -310,6 +330,13 @@ const ioCard = (side: Side) => {
       </div>
       {input}
       <span class="io-meta">{buffer[side].derive(b => (b ? describe(b) : ""))}</span>
+      <label class="level-control">
+        <span>trim</span>
+        {trim}
+        <output>
+          {trimDb[side].derive(db => `${db > 0 ? "+" : ""}${db.toFixed(1)} dB`)}
+        </output>
+      </label>
     </div>
   ) as HTMLElement;
 
@@ -398,8 +425,28 @@ selA.setAttribute("aria-pressed", "true");
 selB.setAttribute("aria-pressed", "false");
 selDelta.setAttribute("aria-pressed", "false");
 
+const volumeSlider = (
+  <input
+    type="range"
+    min="0"
+    max="1"
+    step="0.01"
+    value="1"
+    aria-label="global volume"
+  />
+) as HTMLInputElement;
+volumeSlider.addEventListener("input", () => {
+  volume.set(volumeSlider.valueAsNumber);
+  applyGains();
+});
+
 const transport = (
   <section id="transport">
+    <label class="level-control global-volume">
+      <span>volume</span>
+      {volumeSlider}
+      <output>{volume.derive(v => `${Math.round(v * 100)}%`)}</output>
+    </label>
     <div class="ab-switch">
       <span class="ab-label">monitoring</span>
       {selA}

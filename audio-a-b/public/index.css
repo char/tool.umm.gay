@@ -58,6 +58,28 @@
   min-height: 1.2em;
 }
 
+.level-control {
+  display: grid;
+  grid-template-columns: 3.5em minmax(0, 1fr) 4.5em;
+  align-items: center;
+  gap: 0.6em;
+  font-size: 0.9rem;
+
+  input {
+    width: 100%;
+  }
+
+  output {
+    text-align: right;
+    white-space: nowrap;
+    font-feature-settings: "tnum";
+  }
+}
+
+.global-volume {
+  width: min(100%, 28em);
+}
+
 #transport {
   display: flex;
   flex-direction: column;
