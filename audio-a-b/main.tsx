@@ -21,7 +21,7 @@ const describe = (b: AudioBuffer) => {
         ? "stereo"
         : `${b.numberOfChannels}ch`;
   const khz = Math.round((b.sampleRate / 1000) * 10) / 10;
-  return `${formatTime(b.duration)}, ${ch}, ${khz} kHz, ${b.length} frames`;
+  return `${formatTime(b.duration)}, ${ch}, ${khz} kHz, ${b.length} samples`;
 };
 
 const isAudioFile = (f: File) =>
@@ -208,7 +208,7 @@ const applyGains = () => {
   if (!gainParam) return;
   const monitor = selected.get();
   const db = volumeDb.get();
-  const master = db <= -100 ? 0 : 10 ** (db / 20);
+  const master = db <= -60 ? 0 : 10 ** (db / 20);
   const t = ctx.currentTime;
   const ramp = 0.005; // short enough not to read as a crossfade, long enough to avoid clicks
   for (const side of ["A", "B"] as Side[]) {
@@ -432,12 +432,12 @@ selA.setAttribute("aria-pressed", "true");
 selB.setAttribute("aria-pressed", "false");
 selDelta.setAttribute("aria-pressed", "false");
 
-const formatVolumeDb = (db: number) => (db <= -100 ? "−∞ dB" : `${db.toFixed(1)} dB`);
+const formatVolumeDb = (db: number) => (db <= -60 ? "−∞ dB" : `${db.toFixed(1)} dB`);
 
 const volumeSlider = (
   <input
     type="range"
-    min="-100"
+    min="-60"
     max="0"
     step="0.1"
     value="0"
