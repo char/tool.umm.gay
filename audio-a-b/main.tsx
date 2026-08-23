@@ -21,7 +21,7 @@ const describe = (b: AudioBuffer) => {
         ? "stereo"
         : `${b.numberOfChannels}ch`;
   const khz = Math.round((b.sampleRate / 1000) * 10) / 10;
-  return `${formatTime(b.duration)} · ${ch} · ${khz} kHz · ${b.length} frames`;
+  return `${formatTime(b.duration)}, ${ch}, ${khz} kHz, ${b.length} frames`;
 };
 
 const isAudioFile = (f: File) =>
@@ -67,7 +67,7 @@ const name: Record<Side, Signal<string>> = {
 };
 
 const selected = new Signal<Monitor>("A");
-const volume = new Signal(1);
+const volumeDb = new Signal(0);
 const trimDb: Record<Side, Signal<number>> = {
   A: new Signal(0),
   B: new Signal(0),
@@ -207,7 +207,8 @@ const seek = (pos: number) => {
 const applyGains = () => {
   if (!gainParam) return;
   const monitor = selected.get();
-  const master = volume.get();
+  const db = volumeDb.get();
+  const master = db <= -100 ? 0 : 10 ** (db / 20);
   const t = ctx.currentTime;
   const ramp = 0.005; // short enough not to read as a crossfade, long enough to avoid clicks
   for (const side of ["A", "B"] as Side[]) {
@@ -326,10 +327,16 @@ const ioCard = (side: Side) => {
     <div class="io-card">
       <div class="io-head">
         <span class="side-badge">{side}</span>
-        <span class="io-name">{name[side].derive(n => n || "no file")}</span>
+        <div class="io-details">
+          <span class="io-name">{name[side].derive(n => n || "no file selected")}</span>
+          <span class="io-meta">{buffer[side].derive(b => (b ? describe(b) : ""))}</span>
+        </div>
       </div>
-      {input}
-      <span class="io-meta">{buffer[side].derive(b => (b ? describe(b) : ""))}</span>
+      <label class="file-picker">
+        {input}
+        <span class="file-action">choose audio</span>
+        <span class="file-hint">or drop it here</span>
+      </label>
       <label class="level-control">
         <span>trim</span>
         {trim}
@@ -376,7 +383,7 @@ const selDelta = selBtn("delta", "Δ", "delta: A − B");
 
 const playBtn = (
   <button type="button" class="play-btn" _onclick={toggle}>
-    {playing.derive(p => (p ? "❚❚ pause" : "▶ play"))}
+    {playing.derive(p => (p ? "pause" : "play"))}
   </button>
 ) as HTMLButtonElement;
 
@@ -425,40 +432,49 @@ selA.setAttribute("aria-pressed", "true");
 selB.setAttribute("aria-pressed", "false");
 selDelta.setAttribute("aria-pressed", "false");
 
+const formatVolumeDb = (db: number) => (db <= -100 ? "−∞ dB" : `${db.toFixed(1)} dB`);
+
 const volumeSlider = (
   <input
     type="range"
-    min="0"
-    max="1"
-    step="0.01"
-    value="1"
+    min="-100"
+    max="0"
+    step="0.1"
+    value="0"
     aria-label="global volume"
+    aria-valuetext="0.0 dB"
   />
 ) as HTMLInputElement;
 volumeSlider.addEventListener("input", () => {
-  volume.set(volumeSlider.valueAsNumber);
+  const db = volumeSlider.valueAsNumber;
+  volumeDb.set(db);
+  volumeSlider.setAttribute("aria-valuetext", formatVolumeDb(db));
   applyGains();
 });
 
 const transport = (
   <section id="transport">
-    <label class="level-control global-volume">
-      <span>volume</span>
-      {volumeSlider}
-      <output>{volume.derive(v => `${Math.round(v * 100)}%`)}</output>
-    </label>
-    <div class="ab-switch">
-      <span class="ab-label">monitoring</span>
-      {selA}
-      {selB}
-      {selDelta}
-    </div>
     <div class="scrub-row">
       {playBtn}
       {slider}
       <span class="time">
         {position.derive(formatTime)} / {durationSig.derive(formatTime)}
       </span>
+    </div>
+    <div class="transport-controls">
+      <div class="ab-switch">
+        <span class="control-label">monitor</span>
+        <div class="ab-buttons">
+          {selA}
+          {selB}
+          {selDelta}
+        </div>
+      </div>
+      <label class="level-control global-volume">
+        <span>volume</span>
+        {volumeSlider}
+        <output>{volumeDb.derive(formatVolumeDb)}</output>
+      </label>
     </div>
     <p class="status">{status}</p>
   </section>
