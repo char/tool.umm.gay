@@ -361,7 +361,6 @@ const ioCard = (side: Side) => {
     e.preventDefault();
     e.stopPropagation();
     card.classList.remove("drag-over");
-    document.body.classList.remove("drag-over");
     const files = Array.from(e.dataTransfer?.files ?? []);
     const file = files.find(isAudioFile) ?? files[0];
     if (file) loadFile(side, file);
@@ -479,37 +478,6 @@ const transport = (
     <p class="status">{status}</p>
   </section>
 );
-
-// ── whole-page drop: fill empty sides first, else replace from A ──
-
-const assignDropped = (files: ArrayLike<File>) => {
-  const dropped = Array.from(files);
-  const recognized = dropped.filter(isAudioFile);
-  const audio = recognized.length ? recognized : dropped;
-  if (!audio.length) return;
-  const order: Side[] = [];
-  if (!buffer.A.get()) order.push("A");
-  if (!buffer.B.get()) order.push("B");
-  if (!order.length) order.push("A", "B");
-  order.forEach((side, i) => {
-    if (audio[i]) loadFile(side, audio[i]);
-  });
-};
-
-document.body.dataset.dropLabel = "drop audio files here";
-document.addEventListener("dragenter", e => {
-  e.preventDefault();
-  document.body.classList.add("drag-over");
-});
-document.addEventListener("dragleave", e => {
-  if (!e.relatedTarget) document.body.classList.remove("drag-over");
-});
-document.addEventListener("dragover", e => e.preventDefault());
-document.addEventListener("drop", e => {
-  e.preventDefault();
-  document.body.classList.remove("drag-over");
-  assignDropped(e.dataTransfer?.files ?? []);
-});
 
 document.addEventListener("keydown", e => {
   if (
