@@ -28,34 +28,21 @@ const isAudioFile = (f: File) =>
   f.type.startsWith("audio/") ||
   /\.(wav|mp3|flac|ogg|oga|opus|m4a|mp4|aac|webm|aiff?|caf)$/i.test(f.name);
 
-// one shared clock: both versions decode to and play through this context, so
-// they cannot drift relative to each other. a single worklet mixes them
-// (out = gainA·A + gainB·B) so the delta is a true sample-accurate A − B
-// rather than relying on the destination to sum oppositely-signed gains.
+// we mix in a single worklet to ensure perfect sync (esp. important for delta
+// instead of relying on signed gain to work properly in browser)
 const ctx = new AudioContext();
-
-let mixer: AudioWorkletNode | null = null;
-let gainParam: Record<Side, AudioParam> | null = null;
-const workletReady = new Signal(false);
-
-ctx.audioWorklet
+const mixer = await ctx.audioWorklet
   .addModule("/mixer.js")
-  .then(() => {
-    mixer = new AudioWorkletNode(ctx, "ab-mixer", {
-      numberOfInputs: 2,
-      numberOfOutputs: 1,
-      outputChannelCount: [2],
-    });
-    mixer.connect(ctx.destination);
-    gainParam = {
-      A: mixer.parameters.get("gainA")!,
-      B: mixer.parameters.get("gainB")!,
-    };
-    workletReady.set(true);
-    applyGains();
-    validate();
-  })
-  .catch(() => status.set("could not initialize the audio mixer worklet"));
+  .then(
+    () =>
+      new AudioWorkletNode(ctx, "ab-mixer", {
+        numberOfInputs: 2,
+        numberOfOutputs: 1,
+        outputChannelCount: [2],
+      }),
+  )
+  .catch(() => null);
+mixer?.connect(ctx.destination);
 
 const buffer: Record<Side, Signal<AudioBuffer | null>> = {
   A: new Signal<AudioBuffer | null>(null),
@@ -74,20 +61,17 @@ const trimDb: Record<Side, Signal<number>> = {
 };
 const playing = new Signal(false);
 const ready = new Signal(false);
-const status = new Signal("");
+const mixerError = "could not initialize the audio mixer worklet";
+const status = new Signal(mixer ? "" : mixerError);
 const position = new Signal(0);
 const durationSig = new Signal(0);
 
-// ── playback engine (mutable audio-graph state, deliberately outside signals) ──
-
 const source: Record<Side, AudioBufferSourceNode | null> = { A: null, B: null };
-let startTime = 0; // ctx.currentTime at which the running sources were scheduled
-let startOffset = 0; // buffer offset the sources started from
-let pausedAt = 0; // authoritative position while not playing
-let generation = 0; // invalidates async work and handlers from superseded sources
+let startTime = 0;
+let startOffset = 0;
 let animationFrame = 0;
 
-// comparison length is the shorter of the two; the longer file is truncated
+// truncate to shortest file in the case of mismatch
 const duration = () => {
   const a = buffer.A.get();
   const b = buffer.B.get();
@@ -103,11 +87,10 @@ const currentPosition = () => {
       duration(),
     );
   }
-  return pausedAt;
+  return position.get();
 };
 
 const stopSources = () => {
-  generation++;
   for (const side of ["A", "B"] as Side[]) {
     const s = source[side];
     if (s) {
@@ -131,7 +114,6 @@ const stopAnimation = () => {
 const onNaturalEnd = () => {
   stopSources();
   stopAnimation();
-  pausedAt = 0;
   playing.set(false);
   position.set(0);
 };
@@ -141,7 +123,6 @@ const startSources = (offset: number) => {
   const b = buffer.B.get();
   if (!a || !b || !mixer) return;
   stopSources();
-  const g = generation;
   const when = ctx.currentTime + 0.02; // tiny shared lead so both begin on the same tick
   for (const [side, buf] of [
     ["A", a],
@@ -149,12 +130,13 @@ const startSources = (offset: number) => {
   ] as [Side, AudioBuffer][]) {
     const s = ctx.createBufferSource();
     s.buffer = buf;
-    s.connect(mixer!, 0, side === "A" ? 0 : 1);
+    s.connect(mixer, 0, side === "A" ? 0 : 1);
     s.start(when, offset, duration() - offset); // stop both at the shorter length
     source[side] = s;
   }
-  source.A!.onended = () => {
-    if (generation === g) onNaturalEnd();
+  const aSource = source.A!;
+  aSource.onended = () => {
+    if (source.A === aSource) onNaturalEnd();
   };
   startTime = when;
   startOffset = offset;
@@ -167,45 +149,46 @@ const tick = () => {
 };
 
 const play = async () => {
-  if (!ready.get()) return;
-  const g = generation;
+  if (!ready.get() || playing.get()) return;
+  playing.set(true);
   try {
     await ctx.resume();
   } catch {
+    if (!playing.get() || source.A) return;
+    playing.set(false);
     status.set("could not start audio playback");
     return;
   }
-  if (!ready.get() || playing.get() || generation !== g) return;
+  if (!ready.get() || !playing.get() || source.A) return;
   status.set("");
-  pausedAt = pausedAt >= duration() ? 0 : pausedAt;
-  startSources(pausedAt);
-  playing.set(true);
+  const offset = position.get() >= duration() ? 0 : position.get();
+  position.set(offset);
+  startSources(offset);
   stopAnimation();
   tick();
 };
 
 const pause = () => {
-  pausedAt = currentPosition();
+  const pos = currentPosition();
   stopSources();
   stopAnimation();
   playing.set(false);
-  position.set(pausedAt);
+  position.set(pos);
 };
 
 const toggle = () => (playing.get() ? pause() : void play());
 
 const seek = (pos: number) => {
   const clamped = clamp(pos, 0, duration());
-  pausedAt = clamped;
   position.set(clamped);
-  if (playing.get()) {
+  if (source.A) {
     if (clamped >= duration()) onNaturalEnd();
     else startSources(clamped);
   }
 };
 
 const applyGains = () => {
-  if (!gainParam) return;
+  if (!mixer) return;
   const monitor = selected.get();
   const db = volumeDb.get();
   const master = db <= -60 ? 0 : 10 ** (db / 20);
@@ -215,7 +198,7 @@ const applyGains = () => {
     const polarity =
       monitor === "delta" ? (side === "A" ? 1 : -1) : monitor === side ? 1 : 0;
     const target = polarity * master * 10 ** (trimDb[side].get() / 20);
-    const p = gainParam[side];
+    const p = mixer.parameters.get(`gain${side}`)!;
     const current = p.value;
     p.cancelScheduledValues(t);
     p.setValueAtTime(current, t);
@@ -231,7 +214,6 @@ const select = (monitor: Monitor) => {
 const resetTransport = () => {
   stopSources();
   stopAnimation();
-  pausedAt = 0;
   playing.set(false);
   position.set(0);
 };
@@ -261,8 +243,8 @@ const validate = () => {
     status.set(a || b ? "load both files to compare" : "");
     return;
   }
-  if (!workletReady.get()) {
-    status.set("initializing audio…");
+  if (!mixer) {
+    status.set(mixerError);
     return;
   }
   ready.set(true);
@@ -298,8 +280,6 @@ const loadFile = async (side: Side, file: File) => {
     validate();
   }
 };
-
-// ── ui ──
 
 const ioCard = (side: Side) => {
   const input = (<input type="file" accept="audio/*" />) as HTMLInputElement;
@@ -399,7 +379,6 @@ slider.addEventListener("change", () => {
   seeking = false;
 });
 
-// keep the slider following playback, but yield to the user while they drag
 position.subscribe(p => {
   if (!seeking) {
     const d = duration();
