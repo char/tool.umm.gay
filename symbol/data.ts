@@ -34,6 +34,8 @@ export interface Manifest {
 
 export type Page = Record<number, UnicodeRecord>;
 export type WordIndex = Record<string, number[]>;
+export type Mode = "text" | "name" | "compose" | "codepoint" | "symbol";
+export const modes: Mode[] = ["text", "name", "compose", "codepoint", "symbol"];
 
 export function hex(cp: number): string {
   return cp.toString(16).toUpperCase().padStart(4, "0");
@@ -61,9 +63,7 @@ export function parseCodepoints(input: string): string {
   return String.fromCodePoint(...points);
 }
 
-export function detectMode(
-  input: string,
-): "text" | "name" | "compose" | "codepoint" | "symbol" {
+export function detectMode(input: string): Mode {
   if (
     /^(?:U\+|0x)/i.test(input) ||
     /^(?=[0-9a-f\s]*\d)[0-9a-f]{4,6}(?:\s+[0-9a-f]{4,6})*$/i.test(input)

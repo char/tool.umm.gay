@@ -1,12 +1,5 @@
 import { deepStrictEqual as equal, ok, throws } from "node:assert/strict";
-import {
-  composeQuery,
-  keysymText,
-  loadCompose,
-  matchCompose,
-  parseComposeLine,
-  searchCompose,
-} from "./compose.ts";
+import { keysymText, loadCompose, parseComposeLine, searchCompose } from "./compose.ts";
 
 const keysyms = {
   apostrophe: "'",
@@ -16,6 +9,8 @@ const keysyms = {
   a: "a",
   less: "<",
   greater: ">",
+  minus: "-",
+  asciitilde: "~",
   space: " ",
   ae: "æ",
   eacute: "é",
@@ -46,53 +41,43 @@ Deno.test("Compose strings, comments, escaped bytes and keysym-only results", ()
 Deno.test(
   "Compose queries accept literal keys, keysyms, prefixes, and optional Compose",
   () => {
-    const entry = {
-      keys: ["Multi_key", "apostrophe", "e"],
-      text: "é",
-      source: "Compose",
-      line: 1,
+    const entries = Object.entries({
+      "Multi_key apostrophe e": "é",
+      "Multi_key a e": "æ",
+      "Multi_key U03B1": "α",
+      "dead_circumflex e": "ê",
+      "Multi_key less greater": "◇",
+      "Multi_key less 3": "♥",
+      "Multi_key minus greater": "→",
+      "Multi_key asciitilde asciitilde": "≈",
+      "Multi_key Multi_key c c c p": "☭",
+    }).map(([keys, text]) => ({ keys: keys.split(" "), text, source: "Compose", line: 1 }));
+    const search = (query: string) => searchCompose(query, entries, keysyms);
+    const expected: Record<string, string[]> = {
+      "'e": ["é"],
+      "apostrophe e": ["é"],
+      "<apostrophe> <e>": ["é"],
+      "<Multi_key> <apostrophe> <e>": ["é"],
+      "Compose apostrophe e": ["é"],
+      "'": ["é"],
+      "<apostrophe>": ["é"],
+      "'ee": [],
+      ae: ["æ"],
+      Greek_alpha: ["α"],
+      dead_circumflex: ["ê"],
+      "<3": ["♥"],
+      "<>": ["◇"],
+      "->": ["→"],
+      "~~": ["≈"],
+      cccp: ["☭"],
+      CCCP: ["☭"],
+      "<Multi_key> <Multi_key> <C> <C> <C> <P>": [],
     };
-    for (const query of [
-      "'e",
-      "apostrophe e",
-      "<apostrophe> <e>",
-      "<Multi_key> <apostrophe> <e>",
-      "Compose apostrophe e",
-      "'",
-      "<apostrophe>",
-    ]) {
-      ok(matchCompose(entry, composeQuery(query, keysyms), keysyms), query);
-    }
-    ok(!matchCompose(entry, composeQuery("'E", keysyms), keysyms));
-    ok(!matchCompose(entry, composeQuery("'ee", keysyms), keysyms));
-    equal(composeQuery("ae", keysyms), ["a", "e"]);
-    equal(composeQuery("<3", keysyms), ["<", "3"]);
-    equal(composeQuery("<>", keysyms), ["<", ">"]);
-    equal(composeQuery("Greek_alpha", keysyms), ["Greek_alpha"]);
-    throws(() => composeQuery("<Multi_key> garbage", keysyms));
-    ok(matchCompose({ ...entry, keys: ["dead_acute", "e"] }, ["dead_acute"], keysyms));
-    ok(matchCompose({ ...entry, keys: ["Multi_key", "U03B1"] }, ["Greek_alpha"], keysyms));
-    const examples = [
-      { ...entry, keys: ["Multi_key", "Multi_key", "c", "c", "c", "p"], text: "☭" },
-      { ...entry, keys: ["Multi_key", "less", "3"], text: "♥" },
-      { ...entry, keys: ["Multi_key", "minus", "greater"], text: "→" },
-      { ...entry, keys: ["Multi_key", "asciitilde", "asciitilde"], text: "≈" },
-    ];
-    const symbols = { ...keysyms, minus: "-", asciitilde: "~" };
-    for (const [query, text] of [
-      ["CCCP", "☭"],
-      ["<3", "♥"],
-      ["->", "→"],
-      ["~~", "≈"],
-    ]) {
-      equal(searchCompose(query, examples, symbols).texts, [text]);
-    }
-    ok(searchCompose("CCCP", examples, symbols).ignoreCase);
-    ok(!searchCompose("cccp", examples, symbols).ignoreCase);
-    equal(
-      searchCompose("<Multi_key> <Multi_key> <C> <C> <C> <P>", examples, symbols).texts,
-      [],
-    );
+    for (const [query, texts] of Object.entries(expected))
+      equal(search(query).texts, texts, query);
+    ok(search("CCCP").ignoreCase);
+    ok(!search("cccp").ignoreCase);
+    throws(() => search("<Multi_key> garbage"));
   },
 );
 

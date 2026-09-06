@@ -14,18 +14,22 @@ export interface DiscordEmoji {
 
 export type HtmlEntities = Record<string, { characters: string }>;
 
-export function indexData(
-  unicode: string,
-  names: string,
-  aliases: string,
-  emoji: DiscordEmoji[],
-  emojiTest: string,
-  htmlEntities: HtmlEntities,
-) {
+export interface Sources {
+  unicodeData: string;
+  derivedName: string;
+  nameAliases: string;
+  emojiTest: string;
+  discordEmoji: DiscordEmoji[];
+  htmlEntities: HtmlEntities;
+}
+
+export function indexData(sources: Sources) {
+  const { unicodeData, derivedName, nameAliases, emojiTest, discordEmoji, htmlEntities } =
+    sources;
   const records = new Map<number, UnicodeRecord>();
   const ranges: UnicodeRange[] = [];
   let rangeStart: UnicodeRange | undefined;
-  for (const line of unicode.trim().split(/\r?\n/)) {
+  for (const line of unicodeData.trim().split(/\r?\n/)) {
     const [
       point,
       name,
@@ -72,7 +76,7 @@ export function indexData(
       });
     }
   }
-  for (const line of names.split(/\r?\n/)) {
+  for (const line of derivedName.split(/\r?\n/)) {
     const match = /^([0-9A-F]+)(?:\.\.([0-9A-F]+))?\s*;\s*([^#]+)/.exec(line);
     if (!match) continue;
     const start = parseInt(match[1], 16);
@@ -95,7 +99,7 @@ export function indexData(
       }
     }
   }
-  for (const line of aliases.split(/\r?\n/)) {
+  for (const line of nameAliases.split(/\r?\n/)) {
     const match = /^([0-9A-F]+);([^;]+);/.exec(line);
     if (!match) continue;
     const record = records.get(parseInt(match[1], 16));
@@ -115,7 +119,7 @@ export function indexData(
     emojiNames.set(text, match[2].trim());
   }
   const discordNames = new Map<string, string[]>();
-  for (const item of emoji) {
+  for (const item of discordEmoji) {
     discordNames.set(item.surrogates, [
       ...new Set([...(discordNames.get(item.surrogates) ?? []), ...item.names]),
     ]);

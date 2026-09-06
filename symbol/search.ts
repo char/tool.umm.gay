@@ -103,6 +103,7 @@ export async function getRecords(ids: number[], manifest: Manifest): Promise<Uni
   });
 }
 
+/** the record for `text` itself, followed by those of its component codepoints */
 export async function lookupText(text: string, manifest: Manifest): Promise<UnicodeRecord[]> {
   const points = Array.from(text, char => char.codePointAt(0)!);
   const ids = [...new Set(points)];
@@ -110,5 +111,8 @@ export async function lookupText(text: string, manifest: Manifest): Promise<Unic
     const sequences = await fetchJSON<Record<string, number>>(`${asset}/sequences.json`);
     if (Object.hasOwn(sequences, text)) ids.unshift(sequences[text]);
   }
-  return getRecords(ids, manifest);
+  const records = await getRecords(ids, manifest);
+  return records[0]?.text === text
+    ? records
+    : [{ id: -1, text, name: "symbol sequence" }, ...records];
 }

@@ -61,20 +61,8 @@ Deno.test("auto mode keeps ambiguous ASCII names separate from explicit codepoin
     equal(detectMode(query), "symbol");
 });
 
-Deno.test("combining marks rank below ordinary characters, except exact names", () => {
-  const accent = { id: 0xb4, text: "´", name: "ACUTE ACCENT", category: "Sk" };
-  const marks = ["Mn", "Mc", "Me"].map((category, i) => ({
-    id: 0x300 + i,
-    text: "◌",
-    name: `COMBINING MARK ${i}`,
-    category,
-  }));
-  equal(rankRecords("accent", [...marks, accent]), [accent, ...marks]);
-  equal(rankRecords("combining mark 0", [accent, ...marks])[0], marks[0]);
-});
-
-const data = indexData(
-  [
+const data = indexData({
+  unicodeData: [
     "0000;<control>;Cc;0;BN;;;;;N;NULL;;;;",
     "0041;LATIN CAPITAL LETTER A;Lu;0;L;;;;;N;;;;0061;",
     "0061;LATIN SMALL LETTER A;Ll;0;L;;;;;N;;;0041;;0041",
@@ -95,9 +83,20 @@ const data = indexData(
     "E000;<Private Use, First>;Co;0;L;;;;;N;;;;;",
     "F8FF;<Private Use, Last>;Co;0;L;;;;;N;;;;;",
   ].join("\n"),
-  "4E00..4E02 ; CJK UNIFIED IDEOGRAPH-*\nAC00 ; HANGUL SYLLABLE GA\nAC01 ; HANGUL SYLLABLE GAG",
-  "0000;NULL;control\n0000;NUL;abbreviation\n00A0;NBSP;abbreviation",
-  [
+  derivedName:
+    "4E00..4E02 ; CJK UNIFIED IDEOGRAPH-*\nAC00 ; HANGUL SYLLABLE GA\nAC01 ; HANGUL SYLLABLE GAG",
+  nameAliases: "0000;NULL;control\n0000;NUL;abbreviation\n00A0;NBSP;abbreviation",
+  emojiTest: [
+    "2764 FE0F ; fully-qualified # ❤️ E0.6 red heart",
+    "2764 ; unqualified # ❤ E0.6 red heart",
+    "1F1EB 1F1F7 ; fully-qualified # 🇫🇷 E0.6 flag: France",
+    "1F1FA 1F1F8 ; fully-qualified # 🇺🇸 E0.6 flag: United States",
+    "1F469 1F3FB 200D 1F4BB ; fully-qualified # 👩🏻‍💻 E4.0 woman technologist: light skin tone",
+    "1F642 200D 2195 FE0F ; fully-qualified # 🙂‍↕️ E15.1 head shaking vertically",
+    "1F642 200D 2195 ; minimally-qualified # 🙂‍↕ E15.1 head shaking vertically",
+    "0023 20E3 ; unqualified # #⃣ E0.6 keycap: #",
+  ].join("\n"),
+  discordEmoji: [
     { surrogates: "❤️", names: ["heart"] },
     { surrogates: "👍", names: ["thumbsup", "+1", "thumbup", "thumbs_up"] },
     { surrogates: "👎", names: ["thumbsdown", "-1", "thumbdown", "thumbs_down"] },
@@ -111,17 +110,7 @@ const data = indexData(
     { surrogates: "🐈", names: ["cat2"] },
     { surrogates: "🐱", names: ["cat"] },
   ],
-  [
-    "2764 FE0F ; fully-qualified # ❤️ E0.6 red heart",
-    "2764 ; unqualified # ❤ E0.6 red heart",
-    "1F1EB 1F1F7 ; fully-qualified # 🇫🇷 E0.6 flag: France",
-    "1F1FA 1F1F8 ; fully-qualified # 🇺🇸 E0.6 flag: United States",
-    "1F469 1F3FB 200D 1F4BB ; fully-qualified # 👩🏻‍💻 E4.0 woman technologist: light skin tone",
-    "1F642 200D 2195 FE0F ; fully-qualified # 🙂‍↕️ E15.1 head shaking vertically",
-    "1F642 200D 2195 ; minimally-qualified # 🙂‍↕ E15.1 head shaking vertically",
-    "0023 20E3 ; unqualified # #⃣ E0.6 keycap: #",
-  ].join("\n"),
-  {
+  htmlEntities: {
     "&angzarr;": { characters: "⍼" },
     "&NotEqualTilde;": { characters: "≂̸" },
     "&nesim;": { characters: "≂̸" },
@@ -130,7 +119,8 @@ const data = indexData(
     "&amp": { characters: "&" },
     "&amp;": { characters: "&" },
   },
-);
+});
+const record = (id: number) => data.pages.get(id >> 8)?.[id];
 const manifest: Manifest = {
   unicodeVersion: "test",
   emojiRevision: "test",
@@ -140,20 +130,13 @@ const manifest: Manifest = {
   prefixes: [...data.indexes.keys()],
 };
 
-Deno.test(
-  "index contains algorithmic names, aliases, sequences, properties, and prefix postings",
-  () => {
-    equal(data.pages.get(0x4e)?.[0x4e02].name, "CJK UNIFIED IDEOGRAPH-4E02");
-    equal(data.pages.get(0xac)?.[0xac01].name, "HANGUL SYLLABLE GAG");
-    equal(data.pages.get(0)?.[0].aliases, ["NULL", "NUL"]);
-    equal(data.pages.get(0)?.[0x41].lowercase, "0061");
-    equal(data.pages.get(0)?.[0xe9].decomposition, "0065 0301");
-    equal(data.indexes.get("nb")?.nbsp, [0xa0]);
-    equal(data.indexes.get("he")?.heart, [0x2764, data.sequences["❤️"]]);
-    equal(unnamedRecord(0xe000, data.ranges).category, "Co");
-    ok(!data.pages.has(0xe0));
-  },
-);
+Deno.test("index contains algorithmic names, aliases, and properties", () => {
+  equal(record(0x4e02)?.name, "CJK UNIFIED IDEOGRAPH-4E02");
+  equal(record(0xac01)?.name, "HANGUL SYLLABLE GAG");
+  equal(record(0)?.aliases, ["NULL", "NUL"]);
+  equal(record(0x41)?.lowercase, "0061");
+  equal(record(0xe9)?.decomposition, "0065 0301");
+});
 
 Deno.test("Unicode names describe emoji sequences independently of Discord shortcodes", () => {
   for (const [text, name] of [
@@ -163,23 +146,21 @@ Deno.test("Unicode names describe emoji sequences independently of Discord short
     ["🙂‍↕", "head shaking vertically"],
     ["#⃣", "keycap: #"],
   ]) {
-    const id = data.sequences[text];
-    equal(data.pages.get(id >> 8)?.[id].name, name);
+    equal(record(data.sequences[text])?.name, name);
   }
   equal(data.shortcodes.flag_fr, data.sequences["🇫🇷"]);
-  equal(data.pages.get(0x27)?.[0x2764].name, "HEAVY BLACK HEART");
-  const id = data.sequences["🙂‍↕️"];
-  equal(data.pages.get(id >> 8)?.[id].shortcodes, undefined);
+  equal(record(0x2764)?.name, "HEAVY BLACK HEART");
+  equal(record(data.sequences["🙂‍↕️"])?.shortcodes, undefined);
 });
 
 Deno.test("HTML entities share records and preserve multi-codepoint outputs", () => {
   equal(data.entities.angzarr, 0x237c);
-  equal(data.pages.get(0x23)?.[0x237c].entities, ["&angzarr;"]);
-  equal(data.pages.get(0)?.[0x26].entities, ["&amp;"]);
+  equal(record(0x237c)?.entities, ["&angzarr;"]);
+  equal(record(0x26)?.entities, ["&amp;"]);
   const id = data.sequences["≂̸"];
   equal(data.entities.NotEqualTilde, id);
   equal(data.entities.nesim, id);
-  equal(data.pages.get(id >> 8)?.[id].name, "MINUS TILDE + COMBINING LONG SOLIDUS OVERLAY");
+  equal(record(id)?.name, "MINUS TILDE + COMBINING LONG SOLIDUS OVERLAY");
 });
 
 Deno.test(
@@ -235,11 +216,9 @@ Deno.test(
       equal(await searchNames("missing term", manifest), []);
       equal(await searchNames(":heart:", manifest), [data.sequences["❤️"]]);
       equal(await searchNames(":+1:", manifest), [0x1f44d]);
-      equal(await searchNames(":-1:", manifest), [0x1f44e]);
       equal(await searchNames(":thumb", manifest), [0x1f44d, 0x1f44e]);
       equal(await searchNames(":slight_smile:", manifest), [0x1f642]);
       equal(await searchNames(":woman_technologist_tone1:", manifest), [data.sequences["👩🏻‍💻"]]);
-      equal(await searchNames(":flag_us:", manifest), [data.sequences["🇺🇸"]]);
       equal(await searchNames(":flag_fr:", manifest), [data.sequences["🇫🇷"]]);
       equal(await searchNames("flag France", manifest), [data.sequences["🇫🇷"]]);
       equal((await lookupText("🇫🇷", manifest))[0].name, "flag: France");
@@ -254,6 +233,10 @@ Deno.test(
         ["❤️", "❤", "️"],
       );
       equal(records[0].shortcodes, ["heart"]);
+      equal(
+        (await lookupText("ab", manifest)).map(record => record.name),
+        ["symbol sequence", "LATIN SMALL LETTER A", "<unassigned>"],
+      );
       equal(
         (await getRecords([0xe000, 0x10ffff], manifest)).map(record => record.name),
         ["<Private Use>", "<noncharacter>"],

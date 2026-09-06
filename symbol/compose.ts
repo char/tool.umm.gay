@@ -22,18 +22,20 @@ export function keysymText(key: string, keysyms: Keysyms): string | undefined {
   return undefined;
 }
 
+const escapes: Record<string, string> = {
+  n: "\n",
+  r: "\r",
+  t: "\t",
+  b: "\b",
+  f: "\f",
+  v: "\v",
+};
+
+// Escapes are byte-wise, so a string may only be decoded once fully unescaped.
 function unquote(value: string): string {
   const bytes: number[] = [];
   const encoder = new TextEncoder();
-  const escapes: Record<string, string> = {
-    n: "\n",
-    r: "\r",
-    t: "\t",
-    b: "\b",
-    f: "\f",
-    v: "\v",
-  };
-  for (let i = 0; i < value.length; ) {
+  for (let i = 0; i < value.length;) {
     if (value[i] !== "\\") {
       const char = String.fromCodePoint(value.codePointAt(i)!);
       bytes.push(...encoder.encode(char));
@@ -80,14 +82,13 @@ export async function loadCompose(
   const locale = new URL(sources.locale, base);
 
   async function load(path: string, parent: URL, stack: string[]) {
-    let url: URL;
     try {
-      path = path
+      const resolved = path
         .replace(/%L/g, locale.href)
         .replace(/%S/g, new URL(".", locale).href.replace(/\/$/, ""));
-      if (/%[A-Z%]/.test(path))
+      if (/%[A-Z%]/.test(resolved))
         throw new Error("Unsupported include substitution; use a relative asset path");
-      url = new URL(path, parent);
+      const url = new URL(resolved, parent);
       if (url.origin !== base.origin || !url.pathname.startsWith(base.pathname)) {
         throw new Error("Compose includes must stay inside /assets/");
       }
@@ -137,7 +138,7 @@ export async function loadCompose(
   return { entries: [...entries.values()], warnings };
 }
 
-export function composeQuery(input: string, keysyms: Keysyms): string[] {
+function composeQuery(input: string, keysyms: Keysyms): string[] {
   if (/<[^<>\s]+>/.test(input)) {
     if (!/^\s*(?:<[^<>\s]+>\s*)+$/.test(input)) {
       throw new Error("Use complete <keysym> tokens, e.g. <Multi_key> <apostrophe> <e>.");
@@ -155,7 +156,7 @@ export function composeQuery(input: string, keysyms: Keysyms): string[] {
   return Array.from(input);
 }
 
-export function matchCompose(
+function matchCompose(
   entry: ComposeEntry,
   query: string[],
   keysyms: Keysyms,
