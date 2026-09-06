@@ -1,6 +1,6 @@
 {
   "lock": false,
-  "workspace": ["calc", "facemodels", "paper-k256", "time"],
+  "workspace": ["calc", "facemodels", "paper-k256", "symbol", "time"],
   "tasks": {
     "build:hub": "cd hub && deno run -A ./build.ts",
     "build:12tet": "cd 12tet && deno run -A ./_build.ts",
@@ -11,6 +11,7 @@
     "build:chords": "cd chords && deno run -A ./_build.ts",
     "build:facemodels": "cd facemodels && deno run -A ./_build.ts",
     "build:time": "cd time && deno run -A ./_build.ts",
+    "build:symbol": "cd symbol && deno run -A ./_build.ts",
     "build": {
       "dependencies": [
         "build:hub",
@@ -21,7 +22,8 @@
         "build:audio-a-b",
         "build:chords",
         "build:facemodels",
-        "build:time"
+        "build:time",
+        "build:symbol"
       ]
     }
   },

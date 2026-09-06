@@ -1,0 +1,10 @@
+{
+  "exclude": [".cache", "public/dist", "public/assets/generated"],
+  "tasks": {
+    "data": "deno run -A _data.ts",
+    "build": "deno run -A _build.ts",
+    "dev": "deno run -A _build.ts --serve",
+    "test": "deno test",
+    "check": "deno check main.tsx _build.ts _data.ts"
+  }
+}
