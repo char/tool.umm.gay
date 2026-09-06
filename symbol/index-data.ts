@@ -1,6 +1,9 @@
 import {
   hex,
+  type NameIndex,
+  nameShard,
   type Page,
+  type SearchRanking,
   type UnicodeRange,
   type UnicodeRecord,
   words,
@@ -172,11 +175,26 @@ export function indexData(sources: Sources) {
 
   const pages = new Map<number, Page>();
   const indexes = new Map<string, WordIndex>();
+  const names = new Map<string, NameIndex>(
+    Array.from({ length: 256 }, (_, id) => [id.toString(16), {}]),
+  );
+  const ranking: SearchRanking = { marks: [], syllables: [] };
   for (const [id, record] of [...records].sort(([a], [b]) => a - b)) {
     const pageId = id >> 8;
     let page = pages.get(pageId);
     if (!page) pages.set(pageId, (page = {}));
     page[id] = record;
+    const name = record.name.toUpperCase();
+    (names.get(nameShard(name))![name] ??= []).push(id);
+    for (const [ranges, matches] of [
+      [ranking.marks, record.category?.startsWith("M")],
+      [ranking.syllables, /\bsyllable\b/i.test(record.name)],
+    ] as const) {
+      if (!matches) continue;
+      const last = ranges.at(-1);
+      if (last && last[1] + 1 === id) last[1] = id;
+      else ranges.push([id, id]);
+    }
     for (const word of words(
       [
         record.name,
@@ -192,5 +210,15 @@ export function indexData(sources: Sources) {
       (index[word] ??= []).push(id);
     }
   }
-  return { pages, indexes, ranges, sequences, shortcodes, entities, count: records.size };
+  return {
+    pages,
+    indexes,
+    names,
+    ranking,
+    ranges,
+    sequences,
+    shortcodes,
+    entities,
+    count: records.size,
+  };
 }

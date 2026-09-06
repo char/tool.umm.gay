@@ -20,7 +20,6 @@ import {
   fetchJSON,
   getRecords,
   lookupText,
-  rankRecords,
   searchNames,
 } from "./search.ts";
 
@@ -230,7 +229,7 @@ async function findGroups(
     const ids = await searchNames(query, db);
     groups.push({
       label: "names / shortcodes / entities",
-      records: rankRecords(query, await getRecords(ids.slice(0, limit), db)),
+      records: await getRecords(ids.slice(0, limit), db),
       total: ids.length,
     });
   }

@@ -12,6 +12,7 @@ const out = "public/assets/generated";
 await Deno.mkdir(cache, { recursive: true });
 await Deno.mkdir(`${out}/pages`, { recursive: true });
 await Deno.mkdir(`${out}/words`, { recursive: true });
+await Deno.mkdir(`${out}/names`, { recursive: true });
 await Deno.mkdir(`${out}/licenses`, { recursive: true });
 
 async function download(url: string, name = url.slice(url.lastIndexOf("/") + 1)) {
@@ -98,13 +99,17 @@ for (const [id, page] of data.pages) {
 for (const [prefix, index] of data.indexes) {
   await Deno.writeTextFile(`${out}/words/${prefix}.json`, JSON.stringify(index));
 }
+for (const [shard, index] of data.names) {
+  await Deno.writeTextFile(`${out}/names/${shard}.json`, JSON.stringify(index));
+}
+await Deno.writeTextFile(`${out}/ranking.json`, JSON.stringify(data.ranking));
 await Deno.writeTextFile(`${out}/sequences.json`, JSON.stringify(data.sequences));
 await Deno.writeTextFile(`${out}/shortcodes.json`, JSON.stringify(data.shortcodes));
 await Deno.writeTextFile(`${out}/entities.json`, JSON.stringify(data.entities));
 await Deno.writeTextFile(`${out}/keysyms.json`, JSON.stringify(keysyms));
-await Deno.writeTextFile(`${out}/Compose`, compose.replace(/^XCOMM/gm, "#"));
-await Deno.writeTextFile(`${out}/XCompose`, xcompose);
-await Deno.writeTextFile(`${out}/WinCompose`, wincompose);
+await Deno.writeTextFile(`${out}/Compose.txt`, compose.replace(/^XCOMM/gm, "#"));
+await Deno.writeTextFile(`${out}/XCompose.txt`, xcompose);
+await Deno.writeTextFile(`${out}/WinCompose.txt`, wincompose);
 await Promise.all([
   downloadText("https://www.unicode.org/license.txt", "LICENSE-unicode.txt").then(text =>
     Deno.writeTextFile(`${out}/licenses/unicode.txt`, text),

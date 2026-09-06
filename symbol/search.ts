@@ -1,6 +1,9 @@
 import {
   type Manifest,
+  type NameIndex,
+  nameShard,
   type Page,
+  type SearchRanking,
   type UnicodeRecord,
   unnamedRecord,
   words,
@@ -8,6 +11,7 @@ import {
 } from "./data.ts";
 
 const cache = new Map<string, Promise<unknown>>();
+let ranking: Record<keyof SearchRanking, Set<number>> | undefined;
 
 export function fetchJSON<T>(path: string): Promise<T> {
   let pending = cache.get(path);
@@ -29,6 +33,8 @@ export function fetchJSON<T>(path: string): Promise<T> {
 export const asset = "/assets/generated";
 
 export async function searchNames(input: string, manifest: Manifest): Promise<number[]> {
+  let ids: number[];
+  let matches: { exact: Set<number>; prefix: Set<number> }[] = [];
   if (input.startsWith(":") || input.startsWith("&")) {
     const entity = input.startsWith("&");
     const aliases = await fetchJSON<Record<string, number>>(
@@ -37,49 +43,69 @@ export async function searchNames(input: string, manifest: Manifest): Promise<nu
     const exact = input.endsWith(entity ? ";" : ":") && input.length > 1;
     let query = input.slice(1, exact ? -1 : undefined);
     if (!entity) query = query.toLowerCase();
-    return [
+    ids = [
       ...new Set(
         Object.entries(aliases)
           .filter(([name]) => (exact ? name === query : name.startsWith(query)))
           .map(([, id]) => id),
       ),
-    ].sort((a, b) => a - b);
+    ];
+  } else {
+    const terms = words(input);
+    if (!terms.length) return [];
+    matches = await Promise.all(
+      terms.map(async term => {
+        const prefix = term.slice(0, 2);
+        const index = manifest.prefixes.includes(prefix)
+          ? await fetchJSON<WordIndex>(`${asset}/words/${prefix}.json`)
+          : {};
+        return {
+          exact: new Set(index[term] ?? []),
+          prefix: new Set(
+            Object.entries(index)
+              .filter(([word]) => (term.length === 1 ? word === term : word.startsWith(term)))
+              .flatMap(([, ids]) => ids),
+          ),
+        };
+      }),
+    );
+    matches.sort((a, b) => a.prefix.size - b.prefix.size);
+    ids = [...matches[0].prefix].filter(id => matches.every(match => match.prefix.has(id)));
   }
-  const terms = words(input);
-  if (!terms.length) return [];
-  const matches = await Promise.all(
-    terms.map(async term => {
-      const prefix = term.slice(0, 2);
-      const index = manifest.prefixes.includes(prefix)
-        ? await fetchJSON<WordIndex>(`${asset}/words/${prefix}.json`)
-        : {};
-      return {
-        exact: new Set(index[term] ?? []),
-        prefix: new Set(
-          Object.entries(index)
-            .filter(([word]) => (term.length === 1 ? word === term : word.startsWith(term)))
-            .flatMap(([, ids]) => ids),
-        ),
-      };
-    }),
-  );
-  matches.sort((a, b) => a.prefix.size - b.prefix.size);
-  return [...matches[0].prefix]
-    .filter(id => matches.every(match => match.prefix.has(id)))
-    .map(id => ({ id, score: matches.filter(match => match.exact.has(id)).length }))
-    .sort((a, b) => b.score - a.score || a.id - b.id)
+  if (ids.length < 2) return ids;
+  const name = input.trim().toUpperCase();
+  const [ranges, names] = await Promise.all([
+    fetchJSON<SearchRanking>(`${asset}/ranking.json`),
+    fetchJSON<NameIndex>(`${asset}/names/${nameShard(name)}.json`),
+  ]);
+  if (!ranking) {
+    const sets = { marks: new Set<number>(), syllables: new Set<number>() };
+    for (const key of ["marks", "syllables"] as const) {
+      for (const [start, end] of ranges[key]) {
+        for (let id = start; id <= end; id++) sets[key].add(id);
+      }
+    }
+    ranking = sets;
+  }
+  const exact = new Set(names[name] ?? []);
+  const { marks, syllables } = ranking;
+  return ids
+    .map(id => ({
+      id,
+      exact: Number(exact.has(id)),
+      mark: Number(marks.has(id)),
+      syllable: Number(syllables.has(id)),
+      score: matches.filter(match => match.exact.has(id)).length,
+    }))
+    .sort(
+      (a, b) =>
+        b.exact - a.exact ||
+        a.mark - b.mark ||
+        a.syllable - b.syllable ||
+        b.score - a.score ||
+        a.id - b.id,
+    )
     .map(match => match.id);
-}
-
-export function rankRecords(query: string, records: UnicodeRecord[]): UnicodeRecord[] {
-  const name = query.trim().toUpperCase();
-  return [...records].sort(
-    (a, b) =>
-      Number(b.name.toUpperCase() === name) - Number(a.name.toUpperCase() === name) ||
-      Number(a.category?.startsWith("M") ?? false) -
-        Number(b.category?.startsWith("M") ?? false) ||
-      Number(/\bsyllable\b/i.test(a.name)) - Number(/\bsyllable\b/i.test(b.name)),
-  );
 }
 
 export async function getRecords(ids: number[], manifest: Manifest): Promise<UnicodeRecord[]> {

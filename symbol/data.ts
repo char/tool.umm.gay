@@ -34,8 +34,20 @@ export interface Manifest {
 
 export type Page = Record<number, UnicodeRecord>;
 export type WordIndex = Record<string, number[]>;
+export type NameIndex = Record<string, number[]>;
+export interface SearchRanking {
+  marks: [start: number, end: number][];
+  syllables: [start: number, end: number][];
+}
 export type Mode = "text" | "name" | "compose" | "codepoint" | "symbol";
 export const modes: Mode[] = ["text", "name", "compose", "codepoint", "symbol"];
+
+// Hash sharding keeps exact-name lookups small even for algorithmic-name families.
+export function nameShard(name: string): string {
+  let hash = 0;
+  for (const char of name) hash = (hash * 31 + char.codePointAt(0)!) & 0xff;
+  return hash.toString(16);
+}
 
 export function hex(cp: number): string {
   return cp.toString(16).toUpperCase().padStart(4, "0");

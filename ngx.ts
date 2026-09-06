@@ -5,6 +5,8 @@ export const config = ngx(undefined, [
     ngx.serverName("tool.umm.gay"),
     ngx.listen(),
     ngx.letsEncrypt("tool.umm.gay"),
+    "gzip on",
+    "gzip_types text/plain text/css application/javascript application/json image/svg+xml",
     ngx("location /", [
       "charset utf-8",
       "add_header Access-Control-Allow-Origin *",
@@ -15,6 +17,8 @@ export const config = ngx(undefined, [
     `server_name ~^(?<subdomain>.+)\.tool\.umm\.gay$`,
     ngx.listen(),
     ngx.letsEncrypt("tool.umm.gay"),
+    "gzip on",
+    "gzip_types text/plain text/css application/javascript application/json image/svg+xml",
     ngx("location /", [
       "charset utf-8",
       "add_header Access-Control-Allow-Origin *",

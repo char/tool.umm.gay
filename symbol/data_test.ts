@@ -13,7 +13,6 @@ import {
   fetchJSON,
   getRecords,
   lookupText,
-  rankRecords,
   searchNames,
 } from "./search.ts";
 
@@ -72,7 +71,13 @@ const data = indexData({
     "0ECB;LAO TONE MAI CATAWA;Mn;122;NSM;;;;;N;;;;;",
     "2242;MINUS TILDE;Sm;0;ON;;;;;N;;;;;",
     "237C;RIGHT ANGLE WITH DOWNWARDS ZIGZAG ARROW;So;0;ON;;;;;N;;;;;",
+    "2600;CATALOG SIGN;So;0;ON;;;;;N;;;;;",
     "2764;HEAVY BLACK HEART;So;0;ON;;;;;N;;;;;",
+    ...Array.from(
+      { length: 45 },
+      (_, i) => `${(0x5000 + i * 256).toString(16)};SEWING NEEDLE VARIANT ${i};So;0;ON;;;;;N;;;;;`,
+    ),
+    "1FAA1;SEWING NEEDLE;So;0;ON;;;;;N;;;;;",
     "1F408;CAT;So;0;ON;;;;;N;;;;;",
     "1F431;CAT FACE;So;0;ON;;;;;N;;;;;",
     "4E00;<CJK Ideograph, First>;Lo;0;L;;;;;N;;;;;",
@@ -85,7 +90,8 @@ const data = indexData({
   ].join("\n"),
   derivedName:
     "4E00..4E02 ; CJK UNIFIED IDEOGRAPH-*\nAC00 ; HANGUL SYLLABLE GA\nAC01 ; HANGUL SYLLABLE GAG",
-  nameAliases: "0000;NULL;control\n0000;NUL;abbreviation\n00A0;NBSP;abbreviation",
+  nameAliases:
+    "0000;NULL;control\n0000;NUL;abbreviation\n00A0;NBSP;abbreviation\n1F431;HANGUL SYLLABLE;alternate",
   emojiTest: [
     "2764 FE0F ; fully-qualified # ❤️ E0.6 red heart",
     "2764 ; unqualified # ❤ E0.6 red heart",
@@ -107,7 +113,7 @@ const data = indexData({
     },
     { surrogates: "🇺🇸", names: ["flag_us"] },
     { surrogates: "🇫🇷", names: ["flag_fr"] },
-    { surrogates: "🐈", names: ["cat2"] },
+    { surrogates: "🐈", names: ["cat2", "yi_syllable_cat_extra"] },
     { surrogates: "🐱", names: ["cat"] },
   ],
   htmlEntities: {
@@ -136,6 +142,13 @@ Deno.test("index contains algorithmic names, aliases, and properties", () => {
   equal(record(0)?.aliases, ["NULL", "NUL"]);
   equal(record(0x41)?.lowercase, "0061");
   equal(record(0xe9)?.decomposition, "0065 0301");
+});
+
+Deno.test("ranking ranges merge consecutive IDs without filling gaps", () => {
+  equal(data.ranking, {
+    marks: [[0x338, 0x338], [0x0ecb, 0x0ecb]],
+    syllables: [[0xa2b6, 0xa2b6], [0xac00, 0xac01]],
+  });
 });
 
 Deno.test("Unicode names describe emoji sequences independently of Discord shortcodes", () => {
@@ -175,6 +188,10 @@ Deno.test(
       ...[...data.indexes].map(
         ([prefix, index]) => [`${asset}/words/${prefix}.json`, index] as const,
       ),
+      ...[...data.names].map(
+        ([shard, index]) => [`${asset}/names/${shard}.json`, index] as const,
+      ),
+      [`${asset}/ranking.json`, data.ranking],
       [`${asset}/sequences.json`, data.sequences],
       [`${asset}/shortcodes.json`, data.shortcodes],
       [`${asset}/entities.json`, data.entities],
@@ -203,13 +220,35 @@ Deno.test(
       equal(await searchNames("&doesNotExist;", manifest), []);
       equal(await searchNames("&NotEqualTilde;", manifest), [data.sequences["≂̸"]]);
       equal((await lookupText("≂̸", manifest))[0].entities, ["&NotEqualTilde;", "&nesim;"]);
-      const cats = await searchNames("cat", manifest);
-      equal(cats, [0xa2b6, 0x1f408, 0x1f431, 0x0ecb]);
-      equal(
-        rankRecords("cat", await getRecords(cats, manifest)).map(record => record.id),
-        [0x1f408, 0x1f431, 0xa2b6, 0x0ecb],
+      equal(await searchNames("cat", manifest), [0x1f408, 0x1f431, 0x2600, 0xa2b6, 0x0ecb]);
+      equal(await searchNames("yi syllable cat", manifest), [0xa2b6, 0x1f408]);
+      equal(await searchNames("hangul syllable", manifest), [0x1f431, 0xac00, 0xac01]);
+      equal(await searchNames(" combining long solidus overlay ", manifest), [
+        0x338,
+        data.sequences["≂̸"],
+      ]);
+      equal(await searchNames("combining long solidus", manifest), [data.sequences["≂̸"], 0x338]);
+      equal(await searchNames(":cat", manifest), [0x1f408, 0x1f431]);
+
+      const beforeSearch = requests.length;
+      const needles = await searchNames("sewing needle", manifest);
+      equal(needles, [0x1faa1, ...Array.from({ length: 45 }, (_, i) => 0x5000 + i * 256)]);
+      ok(!requests.slice(beforeSearch).some(path => path.includes("/pages/")));
+      const beforePage = requests.length;
+      const firstPage = await getRecords(needles.slice(0, 40), manifest);
+      equal(firstPage[0].name, "SEWING NEEDLE");
+      equal(firstPage.length, 40);
+      const displayedPages = new Set(
+        firstPage.map(record => `${asset}/pages/${(record.id >> 8).toString(16)}.json`),
       );
-      equal(rankRecords("yi syllable cat", await getRecords(cats, manifest))[0].id, 0xa2b6);
+      equal(new Set(requests.slice(beforePage)), displayedPages);
+      const expanded = await getRecords(
+        (await searchNames("sewing needle", manifest)).slice(0, 80),
+        manifest,
+      );
+      equal(expanded.length, 46);
+      equal(expanded.slice(0, firstPage.length), firstPage);
+
       equal(await searchNames(":cat:", manifest), [0x1f431]);
       equal(await searchNames("lao tone mai cat", manifest), [0x0ecb]);
       equal(await searchNames("latin small", manifest), [0x61, 0xe9]);
