@@ -1,4 +1,0 @@
-{
-  "compose": ["generated/XCompose.txt", "generated/WinCompose.txt"],
-  "locale": "generated/Compose.txt"
-}

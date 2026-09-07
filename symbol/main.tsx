@@ -348,7 +348,6 @@ document.querySelector("main")!.append(
   <footer>
     <div class="data-links">
       {version}
-      <a href="/assets/sources.json">Compose sources</a>
     </div>
   </footer>,
 );
