@@ -12,20 +12,7 @@
     "build:facemodels": "cd facemodels && deno run -A ./_build.ts",
     "build:time": "cd time && deno run -A ./_build.ts",
     "build:symbol": "cd symbol && deno run -A ./_build.ts",
-    "build": {
-      "dependencies": [
-        "build:hub",
-        "build:12tet",
-        "build:paper-k256",
-        "build:irclogs",
-        "build:img",
-        "build:audio-a-b",
-        "build:chords",
-        "build:facemodels",
-        "build:time",
-        "build:symbol"
-      ]
-    }
+    "build": "deno run -A ./build.ts"
   },
   "imports": {
     "@char/aftercare": "jsr:@char/aftercare@^0.6.8"
